@@ -25,6 +25,9 @@
     --accent-soft:#fff1eb;
     --ok:#17a673;
     --radius:12px;
+    /* 伪元素文案（随语言切换，由 JS 写入） */
+    --txt-done:'已完成';
+    --txt-sauceorder:'点单时的显示顺序（保存后生效）';
   }
   /* touch-action:manipulation —— 连续快速点击（双击）不再误触发页面放大 */
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
@@ -155,7 +158,7 @@
   .history-body[data-tab="done"] .hitem{opacity:.75;background:#fafbfc;}
   .history-body[data-tab="done"] .hitem .hno{color:var(--sub);}
   .history-body[data-tab="done"] .hitem .hno::after{
-    content:'已完成';margin-left:7px;font-size:10.5px;font-weight:800;
+    content:var(--txt-done);margin-left:7px;font-size:10.5px;font-weight:800;
     color:var(--ok);background:#e6f6ec;border-radius:5px;padding:2px 5px;
   }
 
@@ -253,6 +256,15 @@
   }
   .nav-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08);}
 
+  /* 语言切换（中 / NL） */
+  .lang{display:flex;gap:3px;background:#eef0f2;padding:3px;border-radius:20px;flex-shrink:0;}
+  .lang-btn{
+    border:none;background:transparent;color:var(--sub);font-family:inherit;
+    font-size:12.5px;font-weight:800;padding:5px 11px;border-radius:16px;
+    cursor:pointer;transition:.15s;line-height:1.2;
+  }
+  .lang-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
   /* 页面 */
   .view{display:none;}
   .view.active{display:block;}
@@ -275,6 +287,7 @@
     border:none;background:transparent;color:var(--accent);font-family:inherit;
     font-size:13px;font-weight:800;cursor:pointer;padding:2px 4px;text-decoration:underline;
   }
+  .lang-login{justify-content:center;width:max-content;margin:0 auto 16px;}
   .login-msg{
     font-size:12.5px;font-weight:700;color:#e5484d;margin-top:10px;
     min-height:18px;text-align:center;
@@ -377,7 +390,7 @@
   .sauce-order{margin-top:8px;}
   .sauce-order:empty{display:none;}
   .sauce-order::before{
-    content:'点单时的显示顺序（保存后生效）';
+    content:var(--txt-sauceorder);
     display:block;font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:5px;
   }
   .sorow{
@@ -544,10 +557,14 @@
   }
   .modal.show{display:flex;}
   .modal-card{
-    background:var(--panel);border-radius:16px;padding:20px;
+    background:var(--panel);border-radius:16px;
     width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.25);
-    max-height:calc(100vh - 40px);overflow-y:auto;
+    max-height:calc(100vh - 40px);
+    max-height:calc(100dvh - 40px);
+    display:flex;flex-direction:column;overflow:hidden;
   }
+  /* 弹窗内容可滚动，「加入订单」按钮固定在最底部，始终可见 */
+  .modal-body{flex:1;min-height:0;overflow-y:auto;padding:20px 20px 6px;}
   .modal-card h3{margin:0 0 3px;font-size:17px;font-weight:800;
     overflow-wrap:anywhere;word-break:break-word;}
   .modal-card h3 .mdesc-inline{font-size:17px;font-weight:800;color:var(--text);margin-left:4px;}
@@ -584,7 +601,11 @@
   .opt.disabled{opacity:.4;cursor:not-allowed;}
   .sauce-label{margin-top:14px;}
   .sauce-tip{font-weight:700;color:#e5484d;margin-left:6px;}
-  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions{
+    display:flex;gap:10px;flex-shrink:0;
+    padding:12px 20px 18px;
+    border-top:1px solid var(--line);background:var(--panel);
+  }
   .modal-actions button{
     flex:1;width:auto;margin-top:0;padding:12px;border-radius:10px;
     font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;border:none;
@@ -745,15 +766,15 @@
     .cats{gap:6px;margin-bottom:10px;padding:2px 0 8px;}
     .cat{padding:6px 13px;font-size:13px;}
     .grid{gap:10px;}
-    .chunk{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;}
-    .card{padding:8px;border-radius:10px;}
-    .card .emoji{font-size:24px;margin-bottom:3px;}
-    .card .name{font-size:13px;line-height:1.2;}
-    .card .desc{font-size:11.5px;margin-top:2px;line-height:1.25;}
-    .card .row{margin-top:6px;}
-    .card .price{font-size:13.5px;}
-    .add{width:26px;height:26px;font-size:17px;}
-    .card .in-cart{top:7px;right:7px;min-width:18px;height:18px;font-size:11px;}
+    .chunk{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;}
+    .card{padding:7px;border-radius:9px;}
+    .card .emoji{font-size:21px;margin-bottom:2px;}
+    .card .name{font-size:12.5px;line-height:1.18;}
+    .card .desc{font-size:11px;margin-top:1px;line-height:1.2;}
+    .card .row{margin-top:5px;}
+    .card .price{font-size:12.5px;}
+    .add{width:24px;height:24px;font-size:16px;}
+    .card .in-cart{top:5px;right:5px;min-width:17px;height:17px;font-size:10.5px;}
     /* 左侧已提交订单：卡片紧凑 */
     .history-body{padding:12px;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
     /* 右侧当前订单：列宽收窄后内部同步紧凑，避免菜品名被挤压 */
@@ -794,55 +815,63 @@
 <!-- 登录页 -->
 <div id="loginPage">
   <div class="login-card">
-    <h1>🍢 小吃点单</h1>
+    <div class="lang lang-login">
+      <button class="lang-btn" data-lang="zh">中文</button>
+      <button class="lang-btn" data-lang="nl">NL</button>
+    </div>
+    <h1 data-i18n="brand">🍢 小吃点单</h1>
     <div class="sub" id="loginSub">请登录后使用</div>
 
     <div id="loginForm">
       <div class="field">
-        <label>用户名</label>
-        <input id="lgUser" type="text" placeholder="请输入用户名" maxlength="16" autocomplete="username">
+        <label data-i18n="username">用户名</label>
+        <input id="lgUser" type="text" placeholder="请输入用户名" data-i18n-ph="phUsername" maxlength="16" autocomplete="username">
       </div>
       <div class="field">
-        <label>密码</label>
-        <input id="lgPass" type="password" placeholder="请输入密码" maxlength="20" autocomplete="current-password">
+        <label data-i18n="password">密码</label>
+        <input id="lgPass" type="password" placeholder="请输入密码" data-i18n-ph="phPassword" maxlength="20" autocomplete="current-password">
       </div>
-      <button class="btn-primary" id="lgLogin">登录</button>
+      <button class="btn-primary" id="lgLogin" data-i18n="login">登录</button>
       <div class="login-msg" id="lgMsg"></div>
-      <div class="login-switch">还没有账号？<button id="toRegister">注册普通用户</button></div>
+      <div class="login-switch"><span data-i18n="noAccount">还没有账号？</span><button id="toRegister" data-i18n="registerUser">注册普通用户</button></div>
     </div>
 
     <div id="registerForm" style="display:none">
       <div class="field">
-        <label>用户名</label>
-        <input id="rgUser" type="text" placeholder="2-16 个字符" maxlength="16" autocomplete="off">
+        <label data-i18n="username">用户名</label>
+        <input id="rgUser" type="text" placeholder="2-16 个字符" data-i18n-ph="phUsernameReg" maxlength="16" autocomplete="off">
       </div>
       <div class="field">
-        <label>密码</label>
-        <input id="rgPass" type="password" placeholder="至少 3 位" maxlength="20" autocomplete="new-password">
+        <label data-i18n="password">密码</label>
+        <input id="rgPass" type="password" placeholder="至少 3 位" data-i18n-ph="phPasswordMin" maxlength="20" autocomplete="new-password">
       </div>
       <div class="field">
-        <label>确认密码</label>
-        <input id="rgPass2" type="password" placeholder="再输一次" maxlength="20" autocomplete="new-password">
+        <label data-i18n="confirmPassword">确认密码</label>
+        <input id="rgPass2" type="password" placeholder="再输一次" data-i18n-ph="phPassword2" maxlength="20" autocomplete="new-password">
       </div>
-      <button class="btn-primary" id="rgSubmit">提交注册</button>
+      <button class="btn-primary" id="rgSubmit" data-i18n="register">提交注册</button>
       <div class="login-msg" id="rgMsg"></div>
-      <div class="login-switch">已有账号？<button id="toLogin">返回登录</button></div>
+      <div class="login-switch"><span data-i18n="haveAccount">已有账号？</span><button id="toLogin" data-i18n="backToLogin">返回登录</button></div>
     </div>
   </div>
 </div>
 
 <header>
-  <h1>🍢 小吃点单</h1>
+  <h1 data-i18n="brand">🍢 小吃点单</h1>
   <div class="nav">
-    <button class="nav-btn active" data-view="order">点单</button>
-    <button class="nav-btn" data-view="menu">菜品管理</button>
-    <button class="nav-btn" data-view="users" id="navUsers" style="display:none">用户管理</button>
+    <button class="nav-btn active" data-view="order" data-i18n="navOrder">点单</button>
+    <button class="nav-btn" data-view="menu" data-i18n="navMenu">菜品管理</button>
+    <button class="nav-btn" data-view="users" id="navUsers" style="display:none" data-i18n="navUsers">用户管理</button>
   </div>
   <div class="spacer"></div>
-  <span class="cloud" id="cloudBadge" title="云端同步状态"><span class="dot"></span><span id="cloudText">连接中…</span></span>
+  <span class="cloud" id="cloudBadge" title="云端同步状态"><span class="dot"></span><span id="cloudText" data-i18n="cloudConnecting">连接中…</span></span>
+  <div class="lang" id="langSwitch">
+    <button class="lang-btn" data-lang="zh">中文</button>
+    <button class="lang-btn" data-lang="nl">NL</button>
+  </div>
   <span class="count" id="headCount" style="font-size:13px;color:var(--sub);font-weight:700;"></span>
-  <span class="user-chip"><span id="whoami">—</span><span class="role user" id="whoRole">普通用户</span></span>
-  <button class="clear" id="logoutBtn">退出</button>
+  <span class="user-chip"><span id="whoami">—</span><span class="role user" id="whoRole" data-i18n="roleUser">普通用户</span></span>
+  <button class="clear" id="logoutBtn" data-i18n="logout">退出</button>
 </header>
 
 <div class="view active" id="view-order">
@@ -851,8 +880,8 @@
   <aside class="history">
     <div class="history-head">
       <div class="htabs" id="htabs">
-        <button class="htab active" data-tab="pending">待处理<span class="hnum" id="tabPending">0</span></button>
-        <button class="htab" data-tab="done">已完成<span class="hnum" id="tabDone">0</span></button>
+        <button class="htab active" data-tab="pending"><span data-i18n="pendingTab">待处理</span><span class="hnum" id="tabPending">0</span></button>
+        <button class="htab" data-tab="done"><span data-i18n="doneTab">已完成</span><span class="hnum" id="tabDone">0</span></button>
       </div>
       <div class="spacer"></div>
       <button class="clear" id="clearHistory">清空</button>
@@ -869,21 +898,21 @@
   <!-- 订单 -->
   <aside class="order" id="orderPanel">
     <div class="order-head" id="orderHead">
-      <h2>我的订单</h2>
+      <h2 data-i18n="myOrder">我的订单</h2>
       <span class="count" id="orderCount">0 件</span>
-      <input id="orderNoInput" class="ono-input" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="订单号码">
+      <input id="orderNoInput" class="ono-input" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="订单号码" data-i18n-ph="phOrderNo">
       <div class="spacer"></div>
-      <button class="clear" id="clearBtn">清空</button>
+      <button class="clear" id="clearBtn" data-i18n="clear">清空</button>
     </div>
     <div class="lines" id="lines"></div>
     <div class="foot">
       <div class="edit-bar" id="editBar" style="display:none">
         <span class="etxt" id="editBarText"></span>
-        <button type="button" id="editCancel">取消修改</button>
+        <button type="button" id="editCancel" data-i18n="cancelEdit">取消修改</button>
       </div>
-      <input id="orderNote" class="onote-input" type="text" maxlength="60" autocomplete="off" placeholder="整单备注（选填），如：7号桌 / 不要香菜">
+      <input id="orderNote" class="onote-input" type="text" maxlength="60" autocomplete="off" placeholder="整单备注（选填），如：7号桌 / 不要香菜" data-i18n-ph="phOrderNote">
       <div class="total-row">
-        <span class="lbl">合计</span>
+        <span class="lbl" data-i18n="total">合计</span>
         <span class="val" id="total">€0.00</span>
       </div>
       <button class="submit" id="submitBtn" disabled>提交订单</button>
@@ -899,55 +928,55 @@
     <div class="admin-form">
       <h2 id="formTitle">新增菜品</h2>
       <div class="field">
-        <label>名称</label>
-        <input id="fName" type="text" placeholder="例如：炸鸡排" maxlength="30">
+        <label data-i18n="fName">名称</label>
+        <input id="fName" type="text" placeholder="例如：炸鸡排" data-i18n-ph="phName" maxlength="30">
       </div>
       <div class="field row2">
         <div>
-          <label>价格（欧元）</label>
+          <label data-i18n="fPrice">价格（欧元）</label>
           <input id="fPrice" type="number" min="0" step="0.5" placeholder="0">
         </div>
         <div>
-          <label>图标</label>
+          <label data-i18n="fEmoji">图标</label>
           <input id="fEmoji" type="text" placeholder="🍗" maxlength="4">
         </div>
       </div>
       <div class="field">
-        <label>分类</label>
+        <label data-i18n="fCat">分类</label>
         <select id="fCat"></select>
-        <input id="fCatNew" type="text" placeholder="新分类名称" maxlength="8" style="display:none;margin-top:8px">
+        <input id="fCatNew" type="text" placeholder="新分类名称" data-i18n-ph="phNewCat" maxlength="8" style="display:none;margin-top:8px">
       </div>
       <div class="field">
-        <label>简介（可选）</label>
-        <input id="fDesc" type="text" placeholder="例如：现炸 · 多汁" maxlength="20">
+        <label data-i18n="fDesc">简介（可选）</label>
+        <input id="fDesc" type="text" placeholder="例如：现炸 · 多汁" data-i18n-ph="phDesc" maxlength="20">
       </div>
       <div class="field">
-        <label>定制选项（可选，逗号分隔）</label>
-        <input id="fOpts" type="text" placeholder="例如：放汁, 不放汁, 加辣">
+        <label data-i18n="fOpts">定制选项（可选，逗号分隔）</label>
+        <input id="fOpts" type="text" placeholder="例如：放汁, 不放汁, 加辣" data-i18n-ph="phOpts">
       </div>
       <div class="field">
-        <label>蘸料（可选，逗号分隔，加价用 + 如 芝士+1）</label>
-        <input id="fSauces" type="text" placeholder="例如：Sweet Chili, Knoflooksaus, Extra saus+1">
+        <label data-i18n="fSauces">蘸料（可选，逗号分隔，加价用 + 如 芝士+1）</label>
+        <input id="fSauces" type="text" placeholder="例如：Sweet Chili, Knoflooksaus, Extra saus+1" data-i18n-ph="phSaucesEx">
         <div class="sauce-order" id="sauceOrder"></div>
       </div>
       <div class="field">
-        <label>评论（可选，逗号分隔，加价用 + 如 多加辣+1）</label>
-        <input id="fComments" type="text" placeholder="例如：少盐, 多加辣+1, 不要洋葱">
+        <label data-i18n="fComments">评论（可选，逗号分隔，加价用 + 如 多加辣+1）</label>
+        <input id="fComments" type="text" placeholder="例如：少盐, 多加辣+1, 不要洋葱" data-i18n-ph="phCommentsEx">
         <div class="sauce-order" id="commentOrder"></div>
       </div>
       <div class="field">
-        <label>可叠加蘸料（可选，逗号分隔，点单时可点多次叠加）</label>
-        <input id="fStacks" type="text" placeholder="例如：芝士酱+1, 培根+2">
+        <label data-i18n="fStacks">可叠加蘸料（可选，逗号分隔，点单时可点多次叠加）</label>
+        <input id="fStacks" type="text" placeholder="例如：芝士酱+1, 培根+2" data-i18n-ph="phStacksEx">
         <div class="sauce-order" id="stackOrder"></div>
       </div>
       <button class="btn-primary" id="saveDish">＋ 添加菜品</button>
-      <button class="btn-ghost" id="cancelEdit" style="display:none">取消修改</button>
+      <button class="btn-ghost" id="cancelEdit" style="display:none" data-i18n="cancelEdit">取消修改</button>
 
       <div class="cat-manage">
-        <h2>分类定制</h2>
+        <h2 data-i18n="catCustom">分类定制</h2>
         <div class="cat-add">
-          <input id="newCat" type="text" placeholder="新分类名称" maxlength="8">
-          <button id="addCat">添加</button>
+          <input id="newCat" type="text" placeholder="新分类名称" data-i18n-ph="phNewCat" maxlength="8">
+          <button id="addCat" data-i18n="add">添加</button>
         </div>
         <div id="catRows"></div>
       </div>
@@ -963,70 +992,72 @@
 <!-- 用户管理页面（仅管理员） -->
 <div class="view" id="view-users">
   <div class="um">
-    <div class="uhead"><h2>待审核注册</h2><span class="cnt warn" id="pendCount">0</span></div>
+    <div class="uhead"><h2 data-i18n="pendingReg">待审核注册</h2><span class="cnt warn" id="pendCount">0</span></div>
     <div class="ulist" id="pendingUsers"></div>
 
-    <div class="uhead"><h2>全部用户</h2><span class="cnt" id="allCount">0</span></div>
+    <div class="uhead"><h2 data-i18n="allUsers">全部用户</h2><span class="cnt" id="allCount">0</span></div>
     <div class="ulist" id="allUsers"></div>
 
-    <div class="uhead"><h2>修改我的密码</h2></div>
+    <div class="uhead"><h2 data-i18n="changeMyPw">修改我的密码</h2></div>
     <div class="pwbox">
       <div class="field">
-        <label>原密码</label>
+        <label data-i18n="oldPw">原密码</label>
         <input id="pwOld" type="password" maxlength="20" autocomplete="current-password">
       </div>
       <div class="field">
-        <label>新密码</label>
+        <label data-i18n="newPw">新密码</label>
         <input id="pwNew" type="password" maxlength="20" autocomplete="new-password">
       </div>
-      <button class="btn-primary" id="pwSave">保存新密码</button>
+      <button class="btn-primary" id="pwSave" data-i18n="savePw">保存新密码</button>
       <div class="login-msg" id="pwMsg"></div>
     </div>
 
-    <div class="uhead"><h2>数据备份</h2></div>
+    <div class="uhead"><h2 data-i18n="dataBackup">数据备份</h2></div>
     <div class="bakbox">
-      <button class="bak-btn primary" id="bakExport">导出备份</button>
-      <button class="bak-btn" id="bakImport">导入备份</button>
+      <button class="bak-btn primary" id="bakExport" data-i18n="exportBackup">导出备份</button>
+      <button class="bak-btn" id="bakImport" data-i18n="importBackup">导入备份</button>
       <input type="file" id="bakFile" accept=".json,application/json" style="display:none">
-      <div class="bak-tip">备份包含菜品、分类、订单、用户。换地址/换设备时用它迁移；导入会覆盖当前数据。</div>
+      <div class="bak-tip" data-i18n="backupTip">备份包含菜品、分类、订单、用户。换地址/换设备时用它迁移；导入会覆盖当前数据。</div>
     </div>
   </div>
 </div>
 
 <div class="modal" id="optModal">
   <div class="modal-card">
+    <div class="modal-body">
     <h3 id="optTitle">菜品</h3>
     <div class="msub" id="optPrice"></div>
     <div id="optSection">
-      <div class="opt-label">选择需求（单选，不选即为默认）</div>
+      <div class="opt-label" data-i18n="chooseOpts">选择需求（单选，不选即为默认）</div>
       <div class="opt-list" id="optList"></div>
     </div>
     <div id="sauceSection">
-      <div class="opt-label sauce-label">选择蘸料（可多选）<span class="sauce-tip" id="sauceTip"></span></div>
+      <div class="opt-label sauce-label"><span data-i18n="chooseSauces">选择蘸料（可多选）</span><span class="sauce-tip" id="sauceTip"></span></div>
       <div class="opt-list" id="sauceList"></div>
     </div>
     <div id="commentSection">
-      <div class="opt-label sauce-label">选择评论（可多选）</div>
+      <div class="opt-label sauce-label" data-i18n="chooseComments">选择评论（可多选）</div>
       <div class="opt-list" id="commentList"></div>
     </div>
     <div id="stackSection">
-      <div class="opt-label sauce-label">可叠加蘸料（点 + 可叠多份，价格叠加）</div>
+      <div class="opt-label sauce-label" data-i18n="chooseStacks">可叠加蘸料（点 + 可叠多份，价格叠加）</div>
       <div class="stack-list" id="stackList"></div>
     </div>
     <div id="noteSection">
-      <div class="opt-label sauce-label">备注（可选，仅对这一份）</div>
-      <textarea id="optNote" class="note-input" rows="2" maxlength="60" placeholder="例如：不要辣、多放番茄酱、单独打包"></textarea>
+      <div class="opt-label sauce-label" data-i18n="noteLabel">备注（可选，仅对这一份）</div>
+      <textarea id="optNote" class="note-input" rows="2" maxlength="60" placeholder="例如：不要辣、多放番茄酱、单独打包" data-i18n-ph="phNote"></textarea>
+    </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-ghost" id="optCancel">取消</button>
-      <button class="btn-primary" id="optAdd">加入订单</button>
+      <button class="btn-ghost" id="optCancel" data-i18n="cancel">取消</button>
+      <button class="btn-primary" id="optAdd" data-i18n="addToOrder">加入订单</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast">
   <div class="ico" id="toastIco">✅</div>
-  <div class="t1" id="toastTitle">下单成功</div>
+  <div class="t1" id="toastTitle" data-i18n="toastDefault">下单成功</div>
   <div class="t2" id="toastSub"></div>
 </div>
 
@@ -1062,6 +1093,219 @@ const USER_KEY  = 'snack_users_v1';   // 账号：{u,p,role:'admin'|'user',statu
 const SESSION_KEY = 'snack_session_v1';
 const NOTE_KEY  = 'snack_note_v1';    // 整单备注（提交前暂存）
 const ORDERNO_KEY = 'snack_orderno_v1'; // 手动填写的订单号码（留空则自动生成）
+
+// ===== 多语言：中文 / 荷兰语 =====
+const LANG_KEY = 'snack_lang_v1';
+let lang = localStorage.getItem(LANG_KEY) === 'nl' ? 'nl' : 'zh';
+
+const I18N = {
+  zh:{
+    brand:'🍢 小吃点单', appTitle:'小吃点单',
+    loginSub:'请登录后使用', loginSubReg:'注册后需管理员同意才能登录',
+    username:'用户名', phUsername:'请输入用户名', phUsernameReg:'2-16 个字符',
+    password:'密码', phPassword:'请输入密码', phPasswordMin:'至少 3 位',
+    confirmPassword:'确认密码', phPassword2:'再输一次',
+    login:'登录', register:'提交注册', registerUser:'注册普通用户',
+    noAccount:'还没有账号？', haveAccount:'已有账号？', backToLogin:'返回登录',
+    logout:'退出', roleAdmin:'管理员', roleUser:'普通用户',
+    navOrder:'点单', navMenu:'菜品管理', navUsers:'用户管理',
+    cloudConnecting:'连接中…', cloudOnline:'云端已连接', cloudOffline:'离线（仅本机）',
+    pendingTab:'待处理', doneTab:'已完成', clear:'清空', clearDone:'清空已完成',
+    emptyPending:'还没有已提交的订单', emptyPendingSub:'提交后会排在最下面',
+    emptyDone:'还没有已完成的订单', emptyDoneSub:'在「待处理」里点一下订单就算完成',
+    editBtn:'修改', itemUnit:'件', orderNotePrefix:'整单备注：',
+    paid:'✓ 已付款', markPaid:'标记已付款', inlineNote:'〔备注:{0}〕',
+    myOrder:'我的订单', phOrderNo:'订单号码',
+    phOrderNote:'整单备注（选填），如：7号桌 / 不要香菜',
+    cancelEdit:'取消修改', total:'合计', submit:'提交订单', submitPaid:'已付款下单',
+    saveChanges:'保存修改', savePaid:'保存并已付款',
+    selectedCount:'已选 {0} 件', emptyCart:'还没有选择小吃', emptyCartSub:'点击左侧菜单加入订单',
+    editBarText:'正在修改订单 #{0}，改好后点「保存修改」',
+    lblSauce:'蘸料：', lblComment:'评论：', lblStack:'叠加：', lblNote:'备注：',
+    newDish:'新增菜品', editDish:'修改菜品', fName:'名称', phName:'例如：炸鸡排',
+    fPrice:'价格（欧元）', fEmoji:'图标', fCat:'分类', phNewCat:'新分类名称',
+    fDesc:'简介（可选）', phDesc:'例如：现炸 · 多汁',
+    fOpts:'定制选项（可选，逗号分隔）', phOpts:'例如：放汁, 不放汁, 加辣',
+    phSaucesEx:'例如：Sweet Chili, Knoflooksaus, Extra saus+1',
+    phCommentsEx:'例如：少盐, 多加辣+1, 不要洋葱',
+    phStacksEx:'例如：芝士酱+1, 培根+2',
+    fSauces:'蘸料（可选，逗号分隔，加价用 + 如 芝士+1）',
+    fComments:'评论（可选，逗号分隔，加价用 + 如 多加辣+1）',
+    fStacks:'可叠加蘸料（可选，逗号分隔，点单时可点多次叠加）',
+    addDish:'＋ 添加菜品', catCustom:'分类定制', add:'添加', allDishes:'全部菜品',
+    adminTip:'全部菜品 · 共 {0} 个', noDishes:'还没有菜品', noDishesSub:'在左侧填写并添加',
+    noCats:'还没有分类', divider:'分割线', edit:'编辑', del:'删除', rename:'改名', off:'已下架',
+    optsPrefix:'可选：', saucesPrefix:'蘸料：', commentsPrefix:'评论：', stacksPrefix:'可叠加：',
+    titleUp:'上移', titleDown:'下移', titleSave:'保存', titleCancel:'取消',
+    titleOnline:'点击上架', titleOffline:'点击下架', titleDivider:'在此菜品下方插入分割线',
+    optTag:'可选', addCard:'新增菜品', newCatOption:'＋ 新分类…', catAll:'全部',
+    pendingReg:'待审核注册', allUsers:'全部用户', changeMyPw:'修改我的密码',
+    oldPw:'原密码', newPw:'新密码', savePw:'保存新密码',
+    dataBackup:'数据备份', exportBackup:'导出备份', importBackup:'导入备份',
+    backupTip:'备份包含菜品、分类、订单、用户。换地址/换设备时用它迁移；导入会覆盖当前数据。',
+    pending:'待审核', approve:'同意', reject:'拒绝', noPending:'暂无待审核的注册',
+    normal:'正常', currentAccount:'当前账号', noUsers:'暂无用户',
+    chooseOpts:'选择需求（单选，不选即为默认）', chooseSauces:'选择蘸料（可多选）',
+    chooseComments:'选择评论（可多选）', chooseStacks:'可叠加蘸料（点 + 可叠多份，价格叠加）',
+    noteLabel:'备注（可选，仅对这一份）', phNote:'例如：不要辣、多放番茄酱、单独打包',
+    cancel:'取消', addToOrder:'加入订单', toastDefault:'下单成功',
+    optPriceSelected:'{0} · 已选 {1} 项', sauceLockedTip:'（已选需求，仅可选加价蘸料）',
+    perServing:'/份', cssDone:'已完成', cssSauceOrder:'点单时的显示顺序（保存后生效）',
+    addedToOrder:'已加入订单',
+    tPleaseCatName:'请输入分类名称', tCatExists:'该分类已存在', tCatAdded:'已添加分类',
+    tCatNameEmpty:'分类名称不能为空', tCatRenamed:'已重命名分类', tCatDeleted:'已删除分类',
+    movedToOther:'{0} · {1} 个菜品移到「其他」',
+    tDividerDeleted:'已删除分割线', tDishDeleted:'已删除菜品',
+    tDividerInserted:'已插入分割线', tDividerHint:'用 ↑ ↓ 调整它的位置',
+    tDishOff:'已下架「{0}」', tDishOn:'已上架「{0}」',
+    tNotShown:'点单页不再显示', tShownAgain:'已恢复显示',
+    tFillName:'请填写菜品名称', tFillPrice:'请填写正确价格', tFillNewCat:'请填写新分类名称',
+    tSaved:'已保存修改', tDishAdded:'已添加菜品',
+    tPaidMarked:'已标记付款', tPaidUnmarked:'已取消付款',
+    tOrderDone:'订单已完成', tBackToPending:'已退回待处理',
+    orderNoLabel:'单号 {0}', orderNoMoved:'单号 {0} 已移到「{1}」',
+    tLoadConfirm:'点单里已有 {0} 行，载入订单 #{1} 会覆盖当前点单，继续吗？',
+    tLoaded:'已载入到点单', tLoadDetail:'订单 #{0}，改好后点「保存修改」',
+    tEditCancelled:'已取消修改', tOrderUnchanged:'订单 #{0} 保持不变',
+    tCannotSubmit:'无法提交', tNotFound:'菜单里找不到：', tSomeSkipped:'部分菜品已跳过',
+    tOffDish:'（已下架菜品）', tSavedPaid:'已保存（已付款）', tModifiedSaved:'修改已保存',
+    tOrderExists:'订单号已存在', tOrderNoUsed:'单号 {0} 已被使用，请换一个或留空自动生成',
+    tPaidSuccess:'已付款下单成功', tSuccess:'下单成功',
+    orderInfo:'{0} 件 · {1} · 单号 {2}',
+    tLoginSuccess:'登录成功', tAdminPrefix:'管理员 · ',
+    eUserPass:'请输入用户名和密码', eWrong:'用户名或密码不正确',
+    eWaitApprove:'账号还在等待管理员同意，暂时不能登录',
+    eUserShort:'用户名至少 2 个字符', ePassShort:'密码至少 3 位',
+    ePassDiff:'两次输入的密码不一样', eUserTaken:'这个用户名已经被注册了',
+    tRegSubmitted:'已提交，等待管理员同意后即可登录',
+    tApproved:'已同意', tCanLogin:'{0} 现在可以登录了', tRejected:'已拒绝', tUserDeleted:'已删除用户',
+    eOldPwWrong:'原密码不正确', eNewPwShort:'新密码至少 3 位', tPwUpdated:'密码已更新',
+    tCloudSynced:'已同步到云端', tCloudUploaded:'本机数据已上传，其它设备可共享',
+    tBackupExported:'备份已导出', tSavedToDownloads:'已保存到「下载」文件夹',
+    eBackupParse:'备份文件无法解析', eChooseJson:'请选择本系统导出的 .json 文件',
+    eBackupFormat:'备份文件格式不对',
+    cImportConfirm:'导入会覆盖当前的菜品、分类、订单和用户，确定继续吗？',
+    tBackupImported:'备份已导入', backupSummary:'菜品 {0} · 订单 {1} · 用户 {2}'
+  },
+  nl:{
+    brand:'🍢 Snack Bestellen', appTitle:'Snack Bestellen',
+    loginSub:'Log in om te gebruiken', loginSubReg:'Na registratie moet een beheerder dit goedkeuren',
+    username:'Gebruikersnaam', phUsername:'Voer gebruikersnaam in', phUsernameReg:'2-16 tekens',
+    password:'Wachtwoord', phPassword:'Voer wachtwoord in', phPasswordMin:'Minimaal 3 tekens',
+    confirmPassword:'Bevestig wachtwoord', phPassword2:'Nogmaals invoeren',
+    login:'Inloggen', register:'Registreren', registerUser:'Registreer gebruiker',
+    noAccount:'Nog geen account?', haveAccount:'Al een account?', backToLogin:'Terug naar inloggen',
+    logout:'Uitloggen', roleAdmin:'Beheerder', roleUser:'Gebruiker',
+    navOrder:'Bestellen', navMenu:'Menu beheer', navUsers:'Gebruikers',
+    cloudConnecting:'Verbinden…', cloudOnline:'Cloud verbonden', cloudOffline:'Offline (alleen lokaal)',
+    pendingTab:'Open', doneTab:'Afgerond', clear:'Wissen', clearDone:'Afgeronde wissen',
+    emptyPending:'Nog geen bestellingen', emptyPendingSub:'Verschijnen onderaan na verzenden',
+    emptyDone:'Nog geen afgeronde bestellingen', emptyDoneSub:'Tik in "Open" op een bestelling om af te ronden',
+    editBtn:'Aanpassen', itemUnit:'st', orderNotePrefix:'Hele bestelling: ',
+    paid:'✓ Betaald', markPaid:'Markeer betaald', inlineNote:'〔Opmerking:{0}〕',
+    myOrder:'Mijn bestelling', phOrderNo:'Bestelnummer',
+    phOrderNote:'Opmerking hele bestelling (optioneel), bijv. tafel 7 / geen koriander',
+    cancelEdit:'Annuleren', total:'Totaal', submit:'Bestelling plaatsen', submitPaid:'Bestellen (betaald)',
+    saveChanges:'Wijzigingen opslaan', savePaid:'Opslaan (betaald)',
+    selectedCount:'{0} geselecteerd', emptyCart:'Nog niets gekozen', emptyCartSub:'Tik in het menu om toe te voegen',
+    editBarText:'Bestelling #{0} aanpassen, klik daarna op "Wijzigingen opslaan"',
+    lblSauce:'Saus: ', lblComment:'Opmerking: ', lblStack:'Extra: ', lblNote:'Notitie: ',
+    newDish:'Nieuw gerecht', editDish:'Gerecht aanpassen', fName:'Naam', phName:'bijv. Kipfilet',
+    fPrice:'Prijs (euro)', fEmoji:'Icoon', fCat:'Categorie', phNewCat:'Nieuwe categorienaam',
+    fDesc:'Beschrijving (optioneel)', phDesc:'bijv. vers gefrituurd · sappig',
+    fOpts:'Keuzes (optioneel, kommagescheiden)', phOpts:'bijv. saus, geen saus, extra pittig',
+    phSaucesEx:'bijv. Sweet Chili, Knoflooksaus, Extra saus+1',
+    phCommentsEx:'bijv. minder zout, extra pittig+1, geen ui',
+    phStacksEx:'bijv. Kaassaus+1, Bacon+2',
+    fSauces:'Sausen (optioneel, kommagescheiden, toeslag met + bijv. Kaas+1)',
+    fComments:'Opmerkingen (optioneel, kommagescheiden, toeslag met + bijv. Extra pittig+1)',
+    fStacks:"Stapelbare extra's (optioneel, kommagescheiden, meerdere keren te kiezen)",
+    addDish:'＋ Gerecht toevoegen', catCustom:'Categorieën beheren', add:'Toevoegen', allDishes:'Alle gerechten',
+    adminTip:'Alle gerechten · {0} totaal', noDishes:'Nog geen gerechten', noDishesSub:'Vul links in en voeg toe',
+    noCats:'Nog geen categorieën', divider:'Scheidingslijn', edit:'Bewerken', del:'Verwijderen', rename:'Hernoemen', off:'Uit',
+    optsPrefix:'Keuzes: ', saucesPrefix:'Sausen: ', commentsPrefix:'Opmerkingen: ', stacksPrefix:'Stapelbaar: ',
+    titleUp:'Omhoog', titleDown:'Omlaag', titleSave:'Opslaan', titleCancel:'Annuleren',
+    titleOnline:'Klik om aan te zetten', titleOffline:'Klik om uit te zetten', titleDivider:'Scheidingslijn onder dit gerecht invoegen',
+    optTag:'Keuzes', addCard:'Nieuw gerecht', newCatOption:'＋ Nieuwe categorie…', catAll:'Alles',
+    pendingReg:'Registraties in behandeling', allUsers:'Alle gebruikers', changeMyPw:'Mijn wachtwoord wijzigen',
+    oldPw:'Huidig wachtwoord', newPw:'Nieuw wachtwoord', savePw:'Nieuw wachtwoord opslaan',
+    dataBackup:'Back-up', exportBackup:'Back-up exporteren', importBackup:'Back-up importeren',
+    backupTip:'De back-up bevat gerechten, categorieën, bestellingen en gebruikers. Gebruik dit bij verhuizing of een ander apparaat; importeren overschrijft de huidige data.',
+    pending:'In behandeling', approve:'Goedkeuren', reject:'Weigeren', noPending:'Geen registraties in behandeling',
+    normal:'Actief', currentAccount:'Huidig account', noUsers:'Geen gebruikers',
+    chooseOpts:'Kies optie (één, leeg = standaard)', chooseSauces:'Kies saus (meerdere mogelijk)',
+    chooseComments:'Kies opmerking (meerdere mogelijk)', chooseStacks:"Stapelbare extra's (tik + om te stapelen)",
+    noteLabel:'Opmerking (optioneel, alleen dit item)', phNote:'bijv. niet pittig, extra ketchup, apart inpakken',
+    cancel:'Annuleren', addToOrder:'Toevoegen', toastDefault:'Bestelling geplaatst',
+    optPriceSelected:'{0} · {1} gekozen', sauceLockedTip:'(optie gekozen, alleen saus met toeslag)',
+    perServing:'/portie', cssDone:'Klaar', cssSauceOrder:'Weergavevolgorde bij bestellen (actief na opslaan)',
+    addedToOrder:'Toegevoegd',
+    tPleaseCatName:'Voer een categorienaam in', tCatExists:'Deze categorie bestaat al', tCatAdded:'Categorie toegevoegd',
+    tCatNameEmpty:'Categorienaam mag niet leeg zijn', tCatRenamed:'Categorie hernoemd', tCatDeleted:'Categorie verwijderd',
+    movedToOther:'{0} · {1} gerechten verplaatst naar "Overig"',
+    tDividerDeleted:'Scheidingslijn verwijderd', tDishDeleted:'Gerecht verwijderd',
+    tDividerInserted:'Scheidingslijn ingevoegd', tDividerHint:'Gebruik ↑ ↓ om de positie aan te passen',
+    tDishOff:'"{0}" uitgezet', tDishOn:'"{0}" aangezet',
+    tNotShown:'Niet meer zichtbaar op de bestelpagina', tShownAgain:'Weer zichtbaar',
+    tFillName:'Voer een gerechtnaam in', tFillPrice:'Voer een geldige prijs in', tFillNewCat:'Voer een nieuwe categorienaam in',
+    tSaved:'Wijzigingen opgeslagen', tDishAdded:'Gerecht toegevoegd',
+    tPaidMarked:'Gemarkeerd als betaald', tPaidUnmarked:'Betaling ongedaan gemaakt',
+    tOrderDone:'Bestelling afgerond', tBackToPending:'Teruggezet naar open',
+    orderNoLabel:'Nummer {0}', orderNoMoved:'Nummer {0} verplaatst naar "{1}"',
+    tLoadConfirm:'Er staan al {0} regels in de bestelling. Bestelling #{1} laden overschrijft dit. Doorgaan?',
+    tLoaded:'In bestelling geladen', tLoadDetail:'Bestelling #{0}, klik daarna op "Wijzigingen opslaan"',
+    tEditCancelled:'Aanpassing geannuleerd', tOrderUnchanged:'Bestelling #{0} blijft ongewijzigd',
+    tCannotSubmit:'Kan niet plaatsen', tNotFound:'Niet in menu: ', tSomeSkipped:'Sommige gerechten overgeslagen',
+    tOffDish:'(uitgeschakeld gerecht)', tSavedPaid:'Opgeslagen (betaald)', tModifiedSaved:'Wijziging opgeslagen',
+    tOrderExists:'Bestelnummer bestaat al', tOrderNoUsed:'Nummer {0} is al in gebruik, kies een ander of laat leeg',
+    tPaidSuccess:'Betaald besteld', tSuccess:'Besteld',
+    orderInfo:'{0} st · {1} · Nr. {2}',
+    tLoginSuccess:'Ingelogd', tAdminPrefix:'Beheerder · ',
+    eUserPass:'Voer gebruikersnaam en wachtwoord in', eWrong:'Gebruikersnaam of wachtwoord onjuist',
+    eWaitApprove:'Account wacht nog op goedkeuring van een beheerder',
+    eUserShort:'Gebruikersnaam minimaal 2 tekens', ePassShort:'Wachtwoord minimaal 3 tekens',
+    ePassDiff:'Wachtwoorden komen niet overeen', eUserTaken:'Deze gebruikersnaam is al geregistreerd',
+    tRegSubmitted:'Verzonden, wacht op goedkeuring van een beheerder',
+    tApproved:'Goedgekeurd', tCanLogin:'{0} kan nu inloggen', tRejected:'Geweigerd', tUserDeleted:'Gebruiker verwijderd',
+    eOldPwWrong:'Huidig wachtwoord onjuist', eNewPwShort:'Nieuw wachtwoord minimaal 3 tekens', tPwUpdated:'Wachtwoord bijgewerkt',
+    tCloudSynced:'Gesynchroniseerd met cloud', tCloudUploaded:'Lokale data geüpload, deelbaar met andere apparaten',
+    tBackupExported:'Back-up geëxporteerd', tSavedToDownloads:'Opgeslagen in de map "Downloads"',
+    eBackupParse:'Back-upbestand kan niet worden gelezen', eChooseJson:'Kies een .json-bestand van dit systeem',
+    eBackupFormat:'Onjuist back-upformaat',
+    cImportConfirm:'Importeren overschrijft huidige gerechten, categorieën, bestellingen en gebruikers. Doorgaan?',
+    tBackupImported:'Back-up geïmporteerd', backupSummary:'Gerechten {0} · Bestellingen {1} · Gebruikers {2}'
+  }
+};
+// 取翻译：tr('key') 或 tr('key', 参数0, 参数1…)，支持 {0} {1} 占位
+function tr(k, ...a){
+  const d = I18N[lang] || I18N.zh;
+  const s = (d[k] != null) ? d[k] : (I18N.zh[k] != null ? I18N.zh[k] : k);
+  return a.length ? s.replace(/\{(\d+)\}/g, (m,i)=> a[+i] != null ? a[+i] : m) : s;
+}
+function setLang(next){
+  lang = next === 'nl' ? 'nl' : 'zh';
+  localStorage.setItem(LANG_KEY, lang);
+  applyLang();
+}
+// 应用语言：刷新静态文案、伪元素文案与所有动态区域
+function applyLang(){
+  document.documentElement.lang = lang === 'nl' ? 'nl' : 'zh-CN';
+  document.documentElement.style.setProperty('--txt-done', `'${tr('cssDone')}'`);
+  document.documentElement.style.setProperty('--txt-sauceorder', `'${tr('cssSauceOrder')}'`);
+  document.title = tr('appTitle');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = tr(el.dataset.i18nPh); });
+  document.querySelectorAll('.lang-btn').forEach(b=> b.classList.toggle('active', b.dataset.lang === lang));
+  // 登录页提示（登录 / 注册 两种状态）
+  const reg = $('#registerForm').style.display !== 'none';
+  $('#loginSub').textContent = tr(reg ? 'loginSubReg' : 'loginSub');
+  // 云端状态文字
+  const ct = $('#cloudText');
+  if(ct) ct.textContent = tr(cloudState === 'on' ? 'cloudOnline' : cloudState === 'off' ? 'cloudOffline' : 'cloudConnecting');
+  // 动态区域
+  renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin();
+  applyAuth();
+}
 
 // ===== 账号 / 权限 =====
 let currentUser = null;
@@ -1244,7 +1488,7 @@ function renderHistory(){
   document.querySelectorAll('#htabs .htab').forEach(b=>
     b.classList.toggle('active', b.dataset.tab===historyTab));
   $('#history').dataset.tab = historyTab;
-  $('#clearHistory').textContent = historyTab==='done' ? '清空已完成' : '清空';
+  $('#clearHistory').textContent = historyTab==='done' ? tr('clearDone') : tr('clear');
 
   // 已完成：按点击完成的时间，后点的在前
   // 待处理：被退回的按退回点击先后置顶；其余严格按提交先后（旧单在前、新单永远排在最下面），与单号大小无关
@@ -1258,15 +1502,15 @@ function renderHistory(){
             || (Number(a.no)||0) - (Number(b.no)||0);        // 老数据没有提交时间，退回按单号
       });
   const newestNo = (historyTab==='pending' && list.length) ? list[list.length-1].no : null;
-  const emptyText = historyTab==='done' ? '还没有已完成的订单' : '还没有已提交的订单';
-  const emptySub  = historyTab==='done' ? '在「待处理」里点一下订单就算完成' : '提交后会排在最下面';
+  const emptyText = historyTab==='done' ? tr('emptyDone') : tr('emptyPending');
+  const emptySub  = historyTab==='done' ? tr('emptyDoneSub') : tr('emptyPendingSub');
   $('#history').innerHTML = list.length ? list.map((o,idx)=>{
     const items = o.items.slice().sort((a,b)=>menuPos(a)-menuPos(b)).map(i=>{
       const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
       const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${i.sauces.map(s=>s.name+(Number(s.price)>0?`+${eu(s.price)}`:'')).join('+')}）</span>` : '';
       const cmts = i.comments && i.comments.length ? ` <span class="hcmt">（${i.comments.map(c=>c.name+(Number(c.price)>0?`+${eu(c.price)}`:'')).join('+')}）</span>` : '';
       const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
-      const note = i.note ? ` <span class="hnote">〔备注:${i.note}〕</span>` : '';
+      const note = i.note ? ` <span class="hnote">${tr('inlineNote', i.note)}</span>` : '';
       const sum = itemUnit(i) * (i.q||1);
       return `<div class="hline"><span class="hinfo">${i.q}x ${i.name}${i.desc?' '+i.desc:''}${opts}${sauces}${cmts}${stks}${note}</span><span class="hprice">${eu(sum)}</span></div>`;
     }).join('');
@@ -1276,15 +1520,15 @@ function renderHistory(){
         <span class="htime">${o.time}</span>
       </div>
       <div class="hitems">${items}</div>
-      ${o.note ? `<div class="hordernote">📝 整单备注：${o.note}</div>` : ''}
+      ${o.note ? `<div class="hordernote">📝 ${tr('orderNotePrefix')}${o.note}</div>` : ''}
       <div class="hrow">
-        <span class="hcount">${o.count} 件</span>
+        <span class="hcount">${o.count} ${tr('itemUnit')}</span>
         <span class="hright">
-          ${historyTab==='pending' ? `<button class="hedit" data-edit="${o.no}">修改</button>` : ''}
+          ${historyTab==='pending' ? `<button class="hedit" data-edit="${o.no}">${tr('editBtn')}</button>` : ''}
           <span class="htotal">${eu(o.total)}</span>
         </span>
       </div>
-      <button class="hpay ${o.paid?'on':''}" data-pay="${o.no}">${o.paid?'✓ 已付款':'标记已付款'}</button>
+      <button class="hpay ${o.paid?'on':''}" data-pay="${o.no}">${o.paid?tr('paid'):tr('markPaid')}</button>
     </div>`;
   }).join('') : `<div class="empty"><div class="big">🧾</div><div>${emptyText}</div><div style="font-size:12px">${emptySub}</div></div>`;
 }
@@ -1292,13 +1536,13 @@ function renderHistory(){
 // 渲染分类
 function renderCats(){
   $('#cats').innerHTML = getCats().map(c =>
-    `<div class="cat ${c===activeCat?'active':''}" data-cat="${c}">${c}</div>`
+    `<div class="cat ${c===activeCat?'active':''}" data-cat="${c}">${c==='全部'?tr('catAll'):c}</div>`
   ).join('');
   // 更新菜品表单的分类下拉（含空分类）+「新分类」入口
   const cur = $('#fCat').value;
   const list = allCats();
   $('#fCat').innerHTML = list.map(c=>`<option value="${c}">${c}</option>`).join('')
-    + `<option value="__new__">＋ 新分类…</option>`;
+    + `<option value="__new__">${tr('newCatOption')}</option>`;
   if(cur === '__new__' || list.includes(cur)) $('#fCat').value = cur;
 }
 
@@ -1347,7 +1591,7 @@ function renderMenu(){
       return `<div class="card" data-id="${i.id}">
         ${q?`<span class="in-cart">${q}</span>`:''}
         <div class="emoji">${i.emoji}</div>
-        <div class="name">${i.name}${hasOpts?'<span class="opt-tag">可选</span>':''}</div>
+        <div class="name">${i.name}${hasOpts?`<span class="opt-tag">${tr('optTag')}</span>`:''}</div>
         <div class="desc">${i.desc||''}</div>
         <div class="row">
           <span class="price">${eu(i.price)}</span>
@@ -1358,7 +1602,7 @@ function renderMenu(){
     return `<div class="chunk">${cards}</div>`;
   }).join('');
 
-  $('#grid').innerHTML = inner + `<div class="chunk"><div class="add-card" id="addCard"><span class="plus">＋</span><span>新增菜品</span></div></div>`;
+  $('#grid').innerHTML = inner + `<div class="chunk"><div class="add-card" id="addCard"><span class="plus">＋</span><span>${tr('addCard')}</span></div></div>`;
 }
 
 // 渲染订单
@@ -1374,10 +1618,10 @@ function renderOrder(){
     const unit = unitPrice(item, chosen, chosenCmts, chosenStks);
     count += q; total += unit*q;
     const optText = l.opts.length ? `<div class="opt">${l.opts.join(' · ')}</div>` : '';
-    const sText = chosen.length ? `<div class="sauce">蘸料：${sauceText(chosen)}</div>` : '';
-    const cText = chosenCmts.length ? `<div class="comment">评论：${sauceText(chosenCmts)}</div>` : '';
-    const kText = chosenStks.length ? `<div class="stack">叠加：${stackText(chosenStks)}</div>` : '';
-    const nText = l.note ? `<div class="note">备注：${l.note}</div>` : '';
+    const sText = chosen.length ? `<div class="sauce">${tr('lblSauce')}${sauceText(chosen)}</div>` : '';
+    const cText = chosenCmts.length ? `<div class="comment">${tr('lblComment')}${sauceText(chosenCmts)}</div>` : '';
+    const kText = chosenStks.length ? `<div class="stack">${tr('lblStack')}${stackText(chosenStks)}</div>` : '';
+    const nText = l.note ? `<div class="note">${tr('lblNote')}${l.note}</div>` : '';
     const dText = item.desc ? `<div class="d">${item.desc}</div>` : '';
     return `<div class="line">
       <span class="li-emoji">${item.emoji}</span>
@@ -1400,25 +1644,25 @@ function renderOrder(){
     </div>`;
   }).join('');
 
-  $('#lines').innerHTML = lines || `<div class="empty"><div class="big">🛒</div><div>还没有选择小吃</div><div style="font-size:12px">点击左侧菜单加入订单</div></div>`;
-  $('#orderCount').textContent = count + ' 件';
-  $('#headCount').textContent = count ? `已选 ${count} 件` : '';
+  $('#lines').innerHTML = lines || `<div class="empty"><div class="big">🛒</div><div>${tr('emptyCart')}</div><div style="font-size:12px">${tr('emptyCartSub')}</div></div>`;
+  $('#orderCount').textContent = count + ' ' + tr('itemUnit');
+  $('#headCount').textContent = count ? tr('selectedCount', count) : '';
   $('#total').textContent = eu(total);
   const editing = editingOrderNo != null;
   $('#submitBtn').disabled = count===0;
   $('#submitBtn').textContent = count
-    ? `${editing ? '保存修改' : '提交订单'} · ${eu(total)}`
-    : (editing ? '保存修改' : '提交订单');
+    ? `${editing ? tr('saveChanges') : tr('submit')} · ${eu(total)}`
+    : (editing ? tr('saveChanges') : tr('submit'));
   const paidBtn = $('#submitPaidBtn');
   if(paidBtn){
     paidBtn.disabled = count===0;
-    const paidLbl = editing ? '保存并已付款' : '已付款下单';
+    const paidLbl = editing ? tr('savePaid') : tr('submitPaid');
     paidBtn.textContent = count ? `${paidLbl} · ${eu(total)}` : paidLbl;
   }
   const bar = $('#editBar');
   if(bar){
     bar.style.display = editing ? 'flex' : 'none';
-    if(editing) $('#editBarText').textContent = `正在修改订单 #${editingOrderNo}，改好后点「保存修改」`;
+    if(editing) $('#editBarText').textContent = tr('editBarText', editingOrderNo);
   }
   const noteEl = $('#orderNote');
   if(noteEl && document.activeElement !== noteEl) noteEl.value = orderNote;
@@ -1533,7 +1777,7 @@ function renderStackList(){
   $('#stackList').innerHTML = (dish.stacks||[]).map((s,i)=>{
     const n = stackSel.get(s.name) || 0;
     return `<div class="stk ${n>0?'on':''}" data-sk="${i}">
-      <span class="stk-name">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}/份</span>`:''}</span>
+      <span class="stk-name">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}${tr('perServing')}</span>`:''}</span>
       <div class="stk-qty">
         <button data-sk-dec="${i}" ${n>0?'':'disabled'}>−</button>
         <span class="qn">${n}</span>
@@ -1577,7 +1821,7 @@ function syncOptPrice(){
   }).filter(Boolean);
   const stackN = pickedStks.reduce((s,x)=>s+x.n, 0);
   const unit = unitPrice(dish, picked, pickedCmts, pickedStks);
-  $('#optPrice').textContent = `${eu(unit)} · 已选 ${optSel.size + sauceSel.size + commentSel.size + stackN} 项`;
+  $('#optPrice').textContent = tr('optPriceSelected', eu(unit), optSel.size + sauceSel.size + commentSel.size + stackN);
 }
 
 // 已选「需求」时：免费蘸料不可选，加价蘸料仍可选
@@ -1598,7 +1842,7 @@ function refreshSauceLock(){
       b.classList.remove('disabled');
     }
   });
-  $('#sauceTip').textContent = locked ? '（已选需求，仅可选加价蘸料）' : '';
+  $('#sauceTip').textContent = locked ? tr('sauceLockedTip') : '';
   syncOptPrice();
 }
 
@@ -1653,11 +1897,11 @@ $('#optAdd').addEventListener('click', ()=>{
   closeOpt();
   const parts = [dish.name];
   if(opts.length) parts.push(opts.join('、'));
-  if(sauces.length) parts.push(`蘸料:${sauceText(sauces)}`);
-  if(comments.length) parts.push(`评论:${sauceText(comments)}`);
-  if(stacks.length) parts.push(`叠加:${stackText(stacks)}`);
-  if(note) parts.push(`备注:${note}`);
-  showToast('🛒', '已加入订单', `${parts.join(' · ')} · ${eu(unit)}`);
+  if(sauces.length) parts.push(tr('lblSauce') + sauceText(sauces));
+  if(comments.length) parts.push(tr('lblComment') + sauceText(comments));
+  if(stacks.length) parts.push(tr('lblStack') + stackText(stacks));
+  if(note) parts.push(tr('lblNote') + note);
+  showToast('🛒', tr('addedToOrder'), `${parts.join(' · ')} · ${eu(unit)}`);
 });
 
 $('#optCancel').addEventListener('click', closeOpt);
@@ -1680,6 +1924,12 @@ document.querySelector('.nav').addEventListener('click', e=>{
   if(b.dataset.view === 'users') renderUsers();
 });
 
+// 语言切换：中文 / 荷兰语（顶部栏 + 登录页）
+document.addEventListener('click', e=>{
+  const b = e.target.closest('.lang-btn');
+  if(b) setLang(b.dataset.lang);
+});
+
 // 删除菜品
 function removeDish(id){
   const dish = menu.find(m=>m.id===id);
@@ -1690,7 +1940,7 @@ function removeDish(id){
   if(!getCats().includes(activeCat)) activeCat = '全部';
   renderCats(); renderMenu(); renderOrder(); renderAdmin();
   if(editingId === id) resetForm();
-  showToast('🗑️', dish.divider ? '已删除分割线' : '已删除菜品', dish.divider ? '' : dish.name);
+  showToast('🗑️', dish.divider ? tr('tDividerDeleted') : tr('tDishDeleted'), dish.divider ? '' : dish.name);
 }
 
 // ===== 分类定制 =====
@@ -1701,20 +1951,20 @@ function renderCatRows(){
     if(catEditing === i){
       return `<div class="crow">
         <input class="cinput" id="catEditInput" type="text" maxlength="8">
-        <button class="csave" data-ok="${i}" title="保存">✓</button>
-        <button data-cancel="1" title="取消">✕</button>
+        <button class="csave" data-ok="${i}" title="${tr('titleSave')}">✓</button>
+        <button data-cancel="1" title="${tr('titleCancel')}">✕</button>
       </div>`;
     }
     const n = menu.filter(m=>m.cat===c && !m.divider).length;
     return `<div class="crow">
       <span class="cname">${c}</span>
       <span class="ccount">${n}</span>
-      <button data-cup="${i}" ${i===0?'disabled':''} title="上移">↑</button>
-      <button data-cdown="${i}" ${i===cats.length-1?'disabled':''} title="下移">↓</button>
-      <button data-cedit="${i}" title="改名">改名</button>
-      <button class="cdel" data-cdel="${i}" title="删除">删除</button>
+      <button data-cup="${i}" ${i===0?'disabled':''} title="${tr('titleUp')}">↑</button>
+      <button data-cdown="${i}" ${i===cats.length-1?'disabled':''} title="${tr('titleDown')}">↓</button>
+      <button data-cedit="${i}" title="${tr('rename')}">${tr('rename')}</button>
+      <button class="cdel" data-cdel="${i}" title="${tr('del')}">${tr('del')}</button>
     </div>`;
-  }).join('') || `<div style="font-size:13px;color:var(--sub);font-weight:600;padding:6px 0">还没有分类</div>`;
+  }).join('') || `<div style="font-size:13px;color:var(--sub);font-weight:600;padding:6px 0">${tr('noCats')}</div>`;
   // 回到改名状态时自动聚焦并选中
   if(catEditing !== null){
     const inp = $('#catEditInput');
@@ -1724,27 +1974,27 @@ function renderCatRows(){
 
 function addCat(){
   const name = $('#newCat').value.trim();
-  if(!name){ showToast('⚠️','请输入分类名称',''); $('#newCat').focus(); return; }
-  if(allCats().includes(name)){ showToast('⚠️','该分类已存在', name); return; }
+  if(!name){ showToast('⚠️', tr('tPleaseCatName'), ''); $('#newCat').focus(); return; }
+  if(allCats().includes(name)){ showToast('⚠️', tr('tCatExists'), name); return; }
   cats.push(name);
   saveCats();
   $('#newCat').value = '';
   renderCats(); renderMenu(); renderAdmin();
-  showToast('✅','已添加分类', name);
+  showToast('✅', tr('tCatAdded'), name);
 }
 
 function saveCatRename(i){
   const name = $('#catEditInput').value.trim();
   const old = cats[i];
-  if(!name){ showToast('⚠️','分类名称不能为空',''); return; }
-  if(name !== old && allCats().includes(name)){ showToast('⚠️','该分类已存在', name); return; }
+  if(!name){ showToast('⚠️', tr('tCatNameEmpty'), ''); return; }
+  if(name !== old && allCats().includes(name)){ showToast('⚠️', tr('tCatExists'), name); return; }
   cats[i] = name;
   menu.forEach(m=>{ if(m.cat===old) m.cat = name; });
   catEditing = null;
   saveCats(); saveMenu();
   if(activeCat === old) activeCat = name;
   renderCats(); renderMenu(); renderOrder(); renderAdmin();
-  showToast('💾','已重命名分类', `${old} → ${name}`);
+  showToast('💾', tr('tCatRenamed'), `${old} → ${name}`);
 }
 
 function delCat(i){
@@ -1760,7 +2010,7 @@ function delCat(i){
   saveCats(); saveMenu();
   if(activeCat === name) activeCat = '全部';
   renderCats(); renderMenu(); renderOrder(); renderAdmin();
-  showToast('🗑️','已删除分类', moving ? `${name} · ${moving} 个菜品移到「其他」` : name);
+  showToast('🗑️', tr('tCatDeleted'), moving ? tr('movedToOther', name, moving) : name);
 }
 
 function moveCat(i, dir){
@@ -1795,43 +2045,43 @@ $('#catRows').addEventListener('keydown', e=>{
 
 // 渲染菜品管理列表（按分类分组）
 function renderAdmin(){
-  $('#adminTip').textContent = `全部菜品 · 共 ${menu.filter(i=>!i.divider).length} 个`;
+  $('#adminTip').textContent = tr('adminTip', menu.filter(i=>!i.divider).length);
   renderCatRows();
   if(!menu.length){
-    $('#adminList').innerHTML = `<div class="admin-empty"><div class="big">🍽️</div><div>还没有菜品</div><div style="font-size:12px">在左侧填写并添加</div></div>`;
+    $('#adminList').innerHTML = `<div class="admin-empty"><div class="big">🍽️</div><div>${tr('noDishes')}</div><div style="font-size:12px">${tr('noDishesSub')}</div></div>`;
     return;
   }
   $('#adminList').innerHTML = allCats().map(c=>{
     const items = menu.filter(i=>i.cat===c);
     const rows = items.map((i,idx)=>{
-      const up = `<button class="amove" data-up="${i.id}" ${idx===0?'disabled':''} title="上移">↑</button>`;
-      const down = `<button class="amove" data-down="${i.id}" ${idx===items.length-1?'disabled':''} title="下移">↓</button>`;
+      const up = `<button class="amove" data-up="${i.id}" ${idx===0?'disabled':''} title="${tr('titleUp')}">↑</button>`;
+      const down = `<button class="amove" data-down="${i.id}" ${idx===items.length-1?'disabled':''} title="${tr('titleDown')}">↓</button>`;
       // 分割线行
       if(i.divider){
         return `<div class="arow divider-row">
           <span class="aemoji">—</span>
-          <div class="ainfo"><div class="aname">分割线</div></div>
+          <div class="ainfo"><div class="aname">${tr('divider')}</div></div>
           <span class="aprice"></span>
           ${up}${down}
-          <button class="adel" data-del="${i.id}">删除</button>
+          <button class="adel" data-del="${i.id}">${tr('del')}</button>
         </div>`;
       }
       return `<div class="arow ${i.id===editingId?'editing':''} ${i.off?'off':''}">
         <span class="aemoji">${i.emoji}</span>
         <div class="ainfo">
-          <div class="aname">${i.name}${i.off?'<span class="aoff">已下架</span>':''}</div>
+          <div class="aname">${i.name}${i.off?`<span class="aoff">${tr('off')}</span>`:''}</div>
           <div class="adesc">${i.desc||'—'}</div>
-          ${i.opts&&i.opts.length?`<div class="aopts">可选：${i.opts.join(' / ')}</div>`:''}
-          ${i.sauces&&i.sauces.length?`<div class="asauce">蘸料：${sauceText(i.sauces)}</div>`:''}
-          ${i.comments&&i.comments.length?`<div class="acmt">评论：${sauceText(i.comments)}</div>`:''}
-          ${i.stacks&&i.stacks.length?`<div class="astack">可叠加：${stackText(i.stacks)}</div>`:''}
+          ${i.opts&&i.opts.length?`<div class="aopts">${tr('optsPrefix')}${i.opts.join(' / ')}</div>`:''}
+          ${i.sauces&&i.sauces.length?`<div class="asauce">${tr('saucesPrefix')}${sauceText(i.sauces)}</div>`:''}
+          ${i.comments&&i.comments.length?`<div class="acmt">${tr('commentsPrefix')}${sauceText(i.comments)}</div>`:''}
+          ${i.stacks&&i.stacks.length?`<div class="astack">${tr('stacksPrefix')}${stackText(i.stacks)}</div>`:''}
         </div>
         <span class="aprice">${eu(i.price)}</span>
-        <button class="asw ${i.off?'':'on'}" data-toggle="${i.id}" title="${i.off?'点击上架':'点击下架'}"><span class="knob"></span></button>
+        <button class="asw ${i.off?'':'on'}" data-toggle="${i.id}" title="${i.off?tr('titleOnline'):tr('titleOffline')}"><span class="knob"></span></button>
         ${up}${down}
-        <button class="adiv" data-div="${i.id}" title="在此菜品下方插入分割线">分割线</button>
-        <button class="aedit" data-edit="${i.id}">编辑</button>
-        <button class="adel" data-del="${i.id}">删除</button>
+        <button class="adiv" data-div="${i.id}" title="${tr('titleDivider')}">${tr('divider')}</button>
+        <button class="aedit" data-edit="${i.id}">${tr('edit')}</button>
+        <button class="adel" data-del="${i.id}">${tr('del')}</button>
       </div>`;
     }).join('');
     const n = items.filter(i=>!i.divider).length;
@@ -1863,7 +2113,7 @@ function insertDivider(afterId){
   menu.splice(pos+1, 0, d);
   saveMenu();
   renderMenu(); renderAdmin();
-  showToast('➖','已插入分割线','用 ↑ ↓ 调整它的位置');
+  showToast('➖', tr('tDividerInserted'), tr('tDividerHint'));
 }
 
 // 上架 / 下架菜品（下架后点单页不再显示）
@@ -1873,8 +2123,8 @@ function toggleDish(id){
   d.off = !d.off;
   saveMenu();
   renderCats(); renderMenu(); renderAdmin();
-  showToast(d.off?'🚫':'✅', d.off?`已下架「${d.name}」`:`已上架「${d.name}」`,
-            d.off?'点单页不再显示':'已恢复显示');
+  showToast(d.off?'🚫':'✅', d.off?tr('tDishOff', d.name):tr('tDishOn', d.name),
+            d.off?tr('tNotShown'):tr('tShownAgain'));
 }
 
 // 调整菜品顺序（在同分类内上移/下移）
@@ -1911,8 +2161,8 @@ function startEdit(id){
   renderPairOrder('#fSauces', '#sauceOrder');
   renderPairOrder('#fComments', '#commentOrder');
   renderPairOrder('#fStacks', '#stackOrder');
-  $('#formTitle').textContent = '修改菜品';
-  $('#saveDish').textContent = '保存修改';
+  $('#formTitle').textContent = tr('editDish');
+  $('#saveDish').textContent = tr('saveChanges');
   $('#cancelEdit').style.display = 'block';
   renderAdmin();
   $('#fName').focus();
@@ -1926,8 +2176,8 @@ function resetForm(){
   renderPairOrder('#fSauces', '#sauceOrder');
   renderPairOrder('#fComments', '#commentOrder');
   renderPairOrder('#fStacks', '#stackOrder');
-  $('#formTitle').textContent = '新增菜品';
-  $('#saveDish').textContent = '＋ 添加菜品';
+  $('#formTitle').textContent = tr('newDish');
+  $('#saveDish').textContent = tr('addDish');
   $('#cancelEdit').style.display = 'none';
   renderAdmin();
 }
@@ -1965,8 +2215,8 @@ function renderPairOrder(inputSel, boxSel){
     <div class="sorow">
       <span class="sname">${s.name}</span>
       ${s.price>0?`<span class="sprice">+${eu(s.price)}</span>`:''}
-      <button data-pup="${i}" ${i===0?'disabled':''} title="上移">↑</button>
-      <button data-pdown="${i}" ${i===list.length-1?'disabled':''} title="下移">↓</button>
+      <button data-pup="${i}" ${i===0?'disabled':''} title="${tr('titleUp')}">↑</button>
+      <button data-pdown="${i}" ${i===list.length-1?'disabled':''} title="${tr('titleDown')}">↓</button>
     </div>`).join('');
 }
 function bindPairOrder(inputSel, boxSel){
@@ -2003,9 +2253,9 @@ $('#saveDish').addEventListener('click', ()=>{
   const comments = parseSauces($('#fComments').value);
   const stacks = parseSauces($('#fStacks').value);
 
-  if(!name){ showToast('⚠️','请填写菜品名称',''); $('#fName').focus(); return; }
-  if(!(price>=0)){ showToast('⚠️','请填写正确价格',''); $('#fPrice').focus(); return; }
-  if(newCat && !$('#fCatNew').value.trim()){ showToast('⚠️','请填写新分类名称',''); $('#fCatNew').focus(); return; }
+  if(!name){ showToast('⚠️', tr('tFillName'), ''); $('#fName').focus(); return; }
+  if(!(price>=0)){ showToast('⚠️', tr('tFillPrice'), ''); $('#fPrice').focus(); return; }
+  if(newCat && !$('#fCatNew').value.trim()){ showToast('⚠️', tr('tFillNewCat'), ''); $('#fCatNew').focus(); return; }
   ensureCat(cat);   // 用了新分类名就自动登记为分类
 
   if(editingId){
@@ -2022,7 +2272,7 @@ $('#saveDish').addEventListener('click', ()=>{
     if(!getCats().includes(activeCat)) activeCat = '全部';
     renderCats(); renderMenu(); renderOrder(); renderAdmin();
     resetForm();
-    showToast('💾', '已保存修改', `${emoji} ${name} · ${eu(price)}`);
+    showToast('💾', tr('tSaved'), `${emoji} ${name} · ${eu(price)}`);
     return;
   }
 
@@ -2032,7 +2282,7 @@ $('#saveDish').addEventListener('click', ()=>{
   activeCat = '全部';
   renderCats(); renderMenu(); renderAdmin();
   resetForm();
-  showToast('✅', '已添加菜品', `${emoji} ${name} · ${eu(price)}`);
+  showToast('✅', tr('tDishAdded'), `${emoji} ${name} · ${eu(price)}`);
 });
 
 // 通用提示
@@ -2117,7 +2367,7 @@ $('#history').addEventListener('click', e=>{
     if(o){
       o.paid = !o.paid;
       saveOrders(); renderHistory();
-      showToast(o.paid?'💰':'↩️', o.paid?'已标记付款':'已取消付款', `单号 ${o.no}`);
+      showToast(o.paid?'💰':'↩️', o.paid?tr('tPaidMarked'):tr('tPaidUnmarked'), tr('orderNoLabel', o.no));
     }
     return;
   }
@@ -2132,15 +2382,15 @@ $('#history').addEventListener('click', e=>{
   if(o.done){ o.doneAt = nextClickAt(); delete o.backAt; }
   else { delete o.doneAt; o.backAt = nextClickAt(); }
   saveOrders(); renderHistory();
-  showToast(o.done?'✅':'↩️', o.done?'订单已完成':'已退回待处理',
-    `单号 ${o.no} 已移到「${o.done?'已完成':'待处理'}」`);
+  showToast(o.done?'✅':'↩️', o.done?tr('tOrderDone'):tr('tBackToPending'),
+    tr('orderNoMoved', o.no, o.done?tr('doneTab'):tr('pendingTab')));
 });
 
 // 把待处理订单重新载入点单购物车进行修改（改完点「保存修改」替换原单）
 function editOrder(no){
   const o = orders.find(x=>String(x.no)===String(no));
   if(!o || o.done) return;
-  if(cart.length && !confirm(`点单里已有 ${cart.length} 行，载入订单 #${o.no} 会覆盖当前点单，继续吗？`)) return;
+  if(cart.length && !confirm(tr('tLoadConfirm', cart.length, o.no))) return;
   cart = o.items.map(it=>{
     const d = menu.find(m=>!m.divider && (m.id===it.id || m.name===it.name));
     return {
@@ -2159,7 +2409,7 @@ function editOrder(no){
   if(orderNote) localStorage.setItem(NOTE_KEY, orderNote); else localStorage.removeItem(NOTE_KEY);
   save(); renderMenu(); renderOrder();
   switchView('order');
-  showToast('✏️', '已载入到点单', `订单 #${o.no}，改好后点「保存修改」`);
+  showToast('✏️', tr('tLoaded'), tr('tLoadDetail', o.no));
 }
 
 // 取消修改：丢弃载入的内容，原订单保持不变
@@ -2168,7 +2418,7 @@ $('#editCancel').addEventListener('click', ()=>{
   const no = editingOrderNo;
   editingOrderNo = null;
   cart = []; clearOrderMeta(); save(); renderMenu(); renderOrder();
-  showToast('↩️', '已取消修改', `订单 #${no} 保持不变`);
+  showToast('↩️', tr('tEditCancelled'), tr('tOrderUnchanged', no));
 });
 
 // 清空：清空当前标签页的订单
@@ -2186,17 +2436,17 @@ function submitOrder(paid){
   const missing = [];
   cart.forEach(l=>{
     const m = dishOfLine(l);
-    if(!m){ missing.push(l.name || '（已下架菜品）'); return; }
+    if(!m){ missing.push(l.name || tr('tOffDish')); return; }
     const unit = unitPrice(m, l.sauces, l.comments, l.stacks);
     t += unit * l.qty;
     n += l.qty;
     items.push({id:m.id, name:m.name, desc:m.desc, q:l.qty, unit, opts:[...l.opts], sauces:orderSauces(m, l.sauces), comments:orderComments(m, l.comments), stacks:orderStacks(m, l.stacks), note:l.note||''});
   });
   if(!items.length){
-    if(missing.length) showToast('⚠️', '无法提交', '菜单里找不到：' + missing.join('、'));
+    if(missing.length) showToast('⚠️', tr('tCannotSubmit'), tr('tNotFound') + missing.join('、'));
     return;
   }
-  if(missing.length) showToast('⚠️', '部分菜品已跳过', '菜单里找不到：' + missing.join('、'));
+  if(missing.length) showToast('⚠️', tr('tSomeSkipped'), tr('tNotFound') + missing.join('、'));
   const d = new Date();
   const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 
@@ -2211,7 +2461,7 @@ function submitOrder(paid){
     const no = editingOrderNo;
     editingOrderNo = null;
     saveOrders(); renderHistory();
-    showToast('✅', paid ? '已保存（已付款）' : '修改已保存', `${n} 件 · ${eu(t)} · 单号 ${no}`);
+    showToast('✅', paid ? tr('tSavedPaid') : tr('tModifiedSaved'), tr('orderInfo', n, eu(t), no));
   } else {
     // 订单号码：手填就用填的（重复则拦截）；留空则自动编号。
     // 自动编号与手填号码互不影响：自动序列只看「自动单」，例：1、2、3 → 手填 2202 → 下一个自动仍是 4
@@ -2219,7 +2469,7 @@ function submitOrder(paid){
     let no, src;
     if(wanted){
       if(orders.some(o=>String(o.no)===wanted)){
-        showToast('⚠️', '订单号已存在', `单号 ${wanted} 已被使用，请换一个或留空自动生成`);
+        showToast('⚠️', tr('tOrderExists'), tr('tOrderNoUsed', wanted));
         return;
       }
       no = wanted; src = 'manual';
@@ -2229,7 +2479,7 @@ function submitOrder(paid){
     }
     orders.unshift({no, src, at: Date.now(), time, items, count:n, total:t, note: orderNote.trim(), paid: !!paid});   // 排序用 at，与单号无关
     saveOrders(); renderHistory();
-    showToast(paid ? '💰' : '✅', paid ? '已付款下单成功' : '下单成功', `${n} 件 · ${eu(t)} · 单号 ${no}`);
+    showToast(paid ? '💰' : '✅', paid ? tr('tPaidSuccess') : tr('tSuccess'), tr('orderInfo', n, eu(t), no));
   }
   cart = []; clearOrderMeta(); save(); renderMenu(); renderOrder();
 }
@@ -2249,19 +2499,19 @@ function renderUsers(){
   $('#pendingUsers').innerHTML = pend.length ? pend.map(u=>`
     <div class="urow pend">
       <span class="uname">${u.u}</span>
-      <span class="ust pending">待审核</span>
-      <button class="btn-ok" data-ok="${u.u}">同意</button>
-      <button class="clear" data-rm="${u.u}">拒绝</button>
-    </div>`).join('') : `<div class="uempty">暂无待审核的注册</div>`;
+      <span class="ust pending">${tr('pending')}</span>
+      <button class="btn-ok" data-ok="${u.u}">${tr('approve')}</button>
+      <button class="clear" data-rm="${u.u}">${tr('reject')}</button>
+    </div>`).join('') : `<div class="uempty">${tr('noPending')}</div>`;
 
   $('#allUsers').innerHTML = users.map(u=>{
-    const tag = u.role==='admin' ? '<span class="ust adm">管理员</span>'
-              : u.status==='active' ? '<span class="ust active">正常</span>'
-              : '<span class="ust pending">待审核</span>';
-    const op = u.u===currentUser.u ? '<span class="you">当前账号</span>'
-             : `<button class="clear" data-rm="${u.u}">删除</button>`;
+    const tag = u.role==='admin' ? `<span class="ust adm">${tr('roleAdmin')}</span>`
+              : u.status==='active' ? `<span class="ust active">${tr('normal')}</span>`
+              : `<span class="ust pending">${tr('pending')}</span>`;
+    const op = u.u===currentUser.u ? `<span class="you">${tr('currentAccount')}</span>`
+             : `<button class="clear" data-rm="${u.u}">${tr('del')}</button>`;
     return `<div class="urow"><span class="uname">${u.u}</span>${tag}${op}</div>`;
-  }).join('') || `<div class="uempty">暂无用户</div>`;
+  }).join('') || `<div class="uempty">${tr('noUsers')}</div>`;
 }
 
 // 按当前身份刷新界面
@@ -2271,7 +2521,7 @@ function applyAuth(){
   if(!logged) return;
   $('#whoami').textContent = currentUser.u;
   const role = $('#whoRole');
-  role.textContent = isAdmin() ? '管理员' : '普通用户';
+  role.textContent = isAdmin() ? tr('roleAdmin') : tr('roleUser');
   role.classList.toggle('user', !isAdmin());
   $('#navUsers').style.display = isAdmin() ? '' : 'none';
   // 普通用户不能清空 / 删除订单
@@ -2284,7 +2534,7 @@ function applyAuth(){
 function showForm(isRegister){
   $('#loginForm').style.display = isRegister ? 'none' : '';
   $('#registerForm').style.display = isRegister ? '' : 'none';
-  $('#loginSub').textContent = isRegister ? '注册后需管理员同意才能登录' : '请登录后使用';
+  $('#loginSub').textContent = tr(isRegister ? 'loginSubReg' : 'loginSub');
   $('#lgMsg').textContent = ''; $('#rgMsg').textContent = '';
 }
 $('#toRegister').addEventListener('click', ()=>showForm(true));
@@ -2294,17 +2544,17 @@ $('#toLogin').addEventListener('click', ()=>showForm(false));
 function doLogin(){
   const u = $('#lgUser').value.trim(), p = $('#lgPass').value, msg = $('#lgMsg');
   const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
-  if(!u || !p) return fail('请输入用户名和密码');
+  if(!u || !p) return fail(tr('eUserPass'));
   const user = findUser(u);
-  if(!user || user.p !== p) return fail('用户名或密码不正确');
-  if(user.status !== 'active') return fail('账号还在等待管理员同意，暂时不能登录');
+  if(!user || user.p !== p) return fail(tr('eWrong'));
+  if(user.status !== 'active') return fail(tr('eWaitApprove'));
   currentUser = user;
   localStorage.setItem(SESSION_KEY, u);
   $('#lgPass').value = '';
   msg.className = 'login-msg'; msg.textContent = '';
   applyAuth();
   switchView('order');
-  showToast('👋', '登录成功', (isAdmin() ? '管理员 · ' : '') + u);
+  showToast('👋', tr('tLoginSuccess'), (isAdmin() ? tr('tAdminPrefix') : '') + u);
 }
 $('#lgLogin').addEventListener('click', doLogin);
 ['lgUser','lgPass'].forEach(id=>$('#'+id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); }));
@@ -2314,15 +2564,15 @@ $('#rgSubmit').addEventListener('click', ()=>{
   const u = $('#rgUser').value.trim(), p = $('#rgPass').value, p2 = $('#rgPass2').value;
   const msg = $('#rgMsg');
   const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
-  if(u.length < 2) return fail('用户名至少 2 个字符');
-  if(p.length < 3) return fail('密码至少 3 位');
-  if(p !== p2) return fail('两次输入的密码不一样');
-  if(findUser(u)) return fail('这个用户名已经被注册了');
+  if(u.length < 2) return fail(tr('eUserShort'));
+  if(p.length < 3) return fail(tr('ePassShort'));
+  if(p !== p2) return fail(tr('ePassDiff'));
+  if(findUser(u)) return fail(tr('eUserTaken'));
   users.push({u, p, role:'user', status:'pending'});
   saveUsers();
   $('#rgUser').value = ''; $('#rgPass').value = ''; $('#rgPass2').value = '';
   msg.className = 'login-msg ok';
-  msg.textContent = '已提交，等待管理员同意后即可登录';
+  msg.textContent = tr('tRegSubmitted');
 });
 
 // 用户管理：同意 / 拒绝 / 删除
@@ -2334,13 +2584,13 @@ $('#view-users').addEventListener('click', e=>{
     const u = findUser(ok.dataset.ok);
     if(!u) return;
     u.status = 'active'; saveUsers(); renderUsers();
-    showToast('✅', '已同意', `${u.u} 现在可以登录了`);
+    showToast('✅', tr('tApproved'), tr('tCanLogin', u.u));
   }else if(rm){
     const name = rm.dataset.rm;
     if(name === currentUser.u) return;
     const pending = (findUser(name) || {}).status === 'pending';
     users = users.filter(x=>x.u !== name); saveUsers(); renderUsers();
-    showToast(pending ? '🚫' : '🗑️', pending ? '已拒绝' : '已删除用户', name);
+    showToast(pending ? '🚫' : '🗑️', pending ? tr('tRejected') : tr('tUserDeleted'), name);
   }
 });
 
@@ -2348,11 +2598,11 @@ $('#view-users').addEventListener('click', e=>{
 $('#pwSave').addEventListener('click', ()=>{
   const o = $('#pwOld').value, n = $('#pwNew').value, msg = $('#pwMsg');
   const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
-  if(o !== currentUser.p) return fail('原密码不正确');
-  if(n.length < 3) return fail('新密码至少 3 位');
+  if(o !== currentUser.p) return fail(tr('eOldPwWrong'));
+  if(n.length < 3) return fail(tr('eNewPwShort'));
   currentUser.p = n; saveUsers();
   $('#pwOld').value = ''; $('#pwNew').value = '';
-  msg.className = 'login-msg ok'; msg.textContent = '密码已更新';
+  msg.className = 'login-msg ok'; msg.textContent = tr('tPwUpdated');
 });
 
 // 退出登录
@@ -2368,6 +2618,7 @@ $('#logoutBtn').addEventListener('click', ()=>{
 // 与后端同源部署时留空；本地前后端分开跑可改成 'http://localhost:3000'
 const API_BASE = '';
 let cloudOn = false;          // 是否已连上后端
+let cloudState = 'connecting';// 连接状态：connecting / on / off
 let cloudRev = -1;            // 已知的服务端版本号
 const COLLS = ['menu','cats','users','orders'];
 const dirty = {};             // 本地改了、待推送的集合
@@ -2379,10 +2630,11 @@ function collData(name){
 }
 function setCloud(ok){
   cloudOn = ok;
+  cloudState = ok ? 'on' : 'off';
   const b = document.getElementById('cloudBadge');
   const t = document.getElementById('cloudText');
   if(b){ b.classList.toggle('on', ok); b.classList.toggle('off', !ok); }
-  if(t) t.textContent = ok ? '云端已连接' : '离线（仅本机）';
+  if(t) t.textContent = tr(ok ? 'cloudOnline' : 'cloudOffline');
 }
 // 本地改动后把对应集合推送到云端（防抖 350ms）
 function cloudPush(name){
@@ -2448,7 +2700,7 @@ async function cloudInit(){
       const j = await r.json();
       if(typeof j.rev === 'number') cloudRev = j.rev;
       COLLS.forEach(c=>{ snap[c] = JSON.stringify(collData(c)); dirty[c] = false; });
-      showToast('☁️', '已同步到云端', '本机数据已上传，其它设备可共享');
+      showToast('☁️', tr('tCloudSynced'), tr('tCloudUploaded'));
     }else{
       cloudRev = Number(s.rev) || 0;
       applyRemote(s);
@@ -2478,23 +2730,23 @@ function exportBackup(){
   a.download = `snack-backup-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-  showToast('📦', '备份已导出', '已保存到「下载」文件夹');
+  showToast('📦', tr('tBackupExported'), tr('tSavedToDownloads'));
 }
 async function importBackup(file){
   let data;
   try{ data = JSON.parse(await file.text()); }
-  catch(e){ showToast('⚠️', '备份文件无法解析', '请选择本系统导出的 .json 文件'); return; }
+  catch(e){ showToast('⚠️', tr('eBackupParse'), tr('eChooseJson')); return; }
   if(!data || !Array.isArray(data.menu) || !Array.isArray(data.users)){
-    showToast('⚠️', '备份文件格式不对', '请选择本系统导出的 .json 文件'); return;
+    showToast('⚠️', tr('eBackupFormat'), tr('eChooseJson')); return;
   }
-  if(!confirm('导入会覆盖当前的菜品、分类、订单和用户，确定继续吗？')) return;
+  if(!confirm(tr('cImportConfirm'))) return;
   menu = data.menu;
   cats = Array.isArray(data.cats) && data.cats.length ? data.cats : cats;
   orders = Array.isArray(data.orders) ? data.orders : [];
   if(data.users.length) users = data.users;
   saveMenu(); saveCats(); saveOrders(); saveUsers();
   renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin(); renderUsers();
-  showToast('✅', '备份已导入', `菜品 ${menu.length} · 订单 ${orders.length} · 用户 ${users.length}`);
+  showToast('✅', tr('tBackupImported'), tr('backupSummary', menu.length, orders.length, users.length));
 }
 $('#bakExport').addEventListener('click', exportBackup);
 $('#bakImport').addEventListener('click', ()=>$('#bakFile').click());
@@ -2507,8 +2759,7 @@ $('#bakFile').addEventListener('change', e=>{
 // 初始化
 saveUsers();
 currentUser = users.find(x=>x.u === localStorage.getItem(SESSION_KEY) && x.status==='active') || null;
-renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin();
-applyAuth();
+applyLang();   // 应用语言（内含各区域渲染与 applyAuth）
 // 云端同步：首次拉取/迁移，之后每 3 秒拉一次（仅页面可见时）
 cloudInit();
 setInterval(cloudPoll, 3000);
