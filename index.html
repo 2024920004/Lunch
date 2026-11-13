@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#ff6b35">
+<title>小吃点单</title>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --panel:#ffffff;
+    --line:#e3e5e9;
+    --text:#1f2329;
+    --sub:#8a9099;
+    --accent:#ff6b35;
+    --accent-soft:#fff1eb;
+    --ok:#17a673;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:15px;
+    font-weight:500;
+    overflow:hidden;
+  }
+
+  /* 顶部栏 */
+  header{
+    height:56px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 16px;
+    background:var(--panel);
+    border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:19px;margin:0;font-weight:800;letter-spacing:.5px;}
+  header .spacer{flex:1;}
+
+  /* 主体：左已提交订单（占左半屏）/ 中菜单 / 右当前订单 */
+  .layout{
+    display:grid;
+    grid-template-columns:50% 1fr 340px;
+    grid-template-rows:minmax(0,1fr);
+    height:calc(100vh - 56px);
+  }
+
+  /* 已提交订单区 */
+  .history{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    display:flex;flex-direction:column;
+    height:100%;min-height:0;
+    overflow:hidden;
+  }
+  .history-head{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .history-head h2{margin:0;font-size:18px;font-weight:800;}
+  .history-head .count{font-size:14px;color:var(--sub);font-weight:700;}
+  .history-head .spacer{flex:1;}
+  /* 待处理 / 已完成 切换标签 */
+  .htabs{display:flex;gap:4px;background:#f0f1f4;border-radius:20px;padding:3px;}
+  .htab{
+    border:none;background:transparent;color:var(--sub);cursor:pointer;
+    font-family:inherit;font-weight:800;font-size:13.5px;
+    padding:6px 14px;border-radius:18px;transition:.15s;
+    display:flex;align-items:center;gap:6px;
+  }
+  .htab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(31,35,41,.12);}
+  .htab .hnum{
+    font-size:11.5px;font-weight:800;color:#fff;background:var(--sub);
+    min-width:18px;height:18px;border-radius:9px;padding:0 5px;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .htab.active .hnum{background:var(--accent);}
+  .history-body{
+    flex:1;min-height:0;overflow-y:auto;padding:14px 16px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    grid-auto-rows:max-content;
+    gap:12px;align-content:start;align-items:start;
+  }
+  .history .empty .big{font-size:52px;opacity:.5;}
+  .history .empty{grid-column:1/-1;height:auto;min-height:40vh;}
+  .hitem{
+    border:1px solid var(--line);border-radius:12px;
+    padding:11px 12px;background:#fff;
+    min-height:140px;min-width:0;
+  }
+  .hitem .hrow{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .hitem .hno{font-weight:800;font-size:15px;color:var(--text);}
+  .hitem .htime{font-size:11.5px;color:var(--sub);font-weight:600;flex-shrink:0;}
+  .hitem .hitems{
+    margin:7px 0;
+    font-size:12.5px;color:#4a4f57;font-weight:600;line-height:1.4;
+  }
+  .hitem .hitems .hline{display:flex;align-items:baseline;gap:6px;min-width:0;}
+  .hitem .hitems .hinfo{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;}
+  .hitem .hitems .hsauce,.hitem .hitems .hopt{color:#e5484d;font-weight:800;}
+  .hitem .hitems .hcmt{color:#1d6fd0;font-weight:800;}
+  .hitem .hitems .hstack{color:#8a5a00;font-weight:800;}
+  .hitem .hitems .hnote{color:#7a4bd0;font-weight:800;}
+  .hitem .hitems .hprice{flex-shrink:0;text-align:right;min-width:48px;color:var(--accent);font-weight:800;}
+  .hitem .hrow:last-child{padding-top:8px;}
+  .hitem .hcount{font-size:12px;color:var(--sub);font-weight:700;}
+  .hitem .htotal{font-weight:800;color:var(--accent);font-size:16px;}
+  .hitem .hright{display:flex;align-items:center;gap:10px;}
+  .hitem .hedit{
+    font-family:inherit;font-size:12px;font-weight:800;color:var(--accent);
+    background:var(--accent-soft);border:1px solid #ffd7c4;border-radius:8px;
+    padding:4px 10px;cursor:pointer;flex-shrink:0;
+  }
+  .hitem .hedit:hover{background:#ffe6db;}
+  .hitem.newest{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+  /* 整张卡片可点：待处理 ↔ 已完成 互相切换 */
+  .history-body .hitem{cursor:pointer;transition:.15s;}
+  .history-body .hitem:hover{border-color:var(--accent);transform:translateY(-1px);}
+  /* 已完成：弱化显示 */
+  .history-body[data-tab="done"] .hitem{opacity:.75;background:#fafbfc;}
+  .history-body[data-tab="done"] .hitem .hno{color:var(--sub);}
+  .history-body[data-tab="done"] .hitem .hno::after{
+    content:'已完成';margin-left:7px;font-size:10.5px;font-weight:800;
+    color:var(--ok);background:#e6f6ec;border-radius:5px;padding:2px 5px;
+  }
+
+  /* 菜单区 */
+  .menu{
+    padding:14px 16px 90px;
+    overflow-y:auto;
+  }
+  .cats{
+    display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
+    position:sticky;top:0;background:var(--bg);padding:4px 0 10px;z-index:5;
+  }
+  .cat{
+    padding:7px 16px;border-radius:20px;background:var(--panel);
+    border:1px solid var(--line);cursor:pointer;font-weight:700;font-size:14px;
+    user-select:none;transition:.15s;
+  }
+  .cat.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  /* 菜单区：按分割线切成若干段，每段各自排成网格（避免分割线顶出空位） */
+  .grid{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .chunk{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:12px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    display:flex;flex-direction:column;
+    cursor:pointer;
+    transition:.15s;
+    position:relative;
+  }
+  .card:active{transform:scale(.97);border-color:var(--accent);}
+  .card .emoji{font-size:34px;line-height:1;margin-bottom:8px;}
+  .card .name{font-weight:800;font-size:15px;line-height:1.25;
+    overflow-wrap:anywhere;word-break:break-word;}
+  .card .desc{font-size:15px;color:var(--text);margin-top:4px;line-height:1.3;font-weight:600;
+    overflow-wrap:anywhere;word-break:break-word;}
+  .card .row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+  .card .price{color:var(--accent);font-weight:800;font-size:16px;}
+  .add{
+    width:28px;height:28px;border-radius:50%;border:none;
+    background:var(--accent);color:#fff;font-size:20px;font-weight:700;
+    line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .card .in-cart{
+    position:absolute;top:10px;right:10px;
+    background:var(--accent);color:#fff;font-size:12px;font-weight:800;
+    min-width:20px;height:20px;border-radius:10px;padding:0 5px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* 菜单里的分割线 */
+  .divider{
+    height:0;
+    border-top:4px dashed #4a4f57;
+    margin:10px 0;
+  }
+
+  /* 「全部」里按分类自动分段 */
+  .seg{display:flex;align-items:center;gap:10px;margin:2px 0;}
+  .seg .seg-name{
+    font-size:13px;font-weight:800;color:var(--accent);
+    background:var(--accent-soft);
+    padding:4px 12px;border-radius:20px;white-space:nowrap;
+  }
+  .seg .seg-line{flex:1;height:0;border-top:1px solid var(--line);}
+
+  /* 新增菜品卡片 */
+  .add-card{
+    border:1.5px dashed #cfd3d9;border-radius:var(--radius);
+    background:transparent;color:var(--sub);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;cursor:pointer;font-weight:700;min-height:120px;transition:.15s;
+  }
+  .add-card:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+  .add-card .plus{font-size:28px;line-height:1;}
+
+  /* 顶部页面切换 */
+  .nav{display:flex;gap:6px;background:#eef0f2;padding:4px;border-radius:22px;}
+  .nav-btn{
+    border:none;background:transparent;color:var(--sub);
+    font-family:inherit;font-size:13.5px;font-weight:800;
+    padding:7px 16px;border-radius:18px;cursor:pointer;transition:.15s;
+  }
+  .nav-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+  /* 页面 */
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* 登录 / 注册 */
+  #loginPage{
+    position:fixed;inset:0;z-index:200;display:none;
+    align-items:center;justify-content:center;background:var(--bg);padding:20px;
+  }
+  body.auth-locked #loginPage{display:flex;}
+  body.auth-locked header,body.auth-locked .view{display:none;}
+  .login-card{
+    width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:26px 24px;box-shadow:0 10px 30px rgba(31,35,41,.09);
+  }
+  .login-card h1{margin:0 0 4px;font-size:22px;font-weight:800;text-align:center;}
+  .login-card .sub{text-align:center;font-size:13px;color:var(--sub);font-weight:600;margin-bottom:18px;}
+  .login-switch{text-align:center;font-size:13px;font-weight:700;color:var(--sub);margin-top:14px;}
+  .login-switch button{
+    border:none;background:transparent;color:var(--accent);font-family:inherit;
+    font-size:13px;font-weight:800;cursor:pointer;padding:2px 4px;text-decoration:underline;
+  }
+  .login-msg{
+    font-size:12.5px;font-weight:700;color:#e5484d;margin-top:10px;
+    min-height:18px;text-align:center;
+  }
+  .login-msg.ok{color:var(--ok);}
+
+  /* 顶部当前用户 */
+  .user-chip{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;}
+  .user-chip .role{
+    font-size:11px;font-weight:800;color:#fff;background:var(--accent);
+    border-radius:5px;padding:2px 6px;
+  }
+  .user-chip .role.user{background:var(--sub);}
+
+  /* 云端同步状态 */
+  .cloud{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:700;color:var(--sub);
+    background:#f0f1f4;border-radius:20px;padding:5px 11px;
+  }
+  .cloud .dot{width:7px;height:7px;border-radius:50%;background:var(--sub);flex-shrink:0;}
+  .cloud.on{color:#0f8f63;background:#e7f7f0;}
+  .cloud.on .dot{background:var(--ok);}
+  .cloud.off{color:#b86a00;background:#fff4e5;}
+  .cloud.off .dot{background:#e5800a;}
+
+  /* 用户管理页 */
+  .um{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+  .um .uhead{display:flex;align-items:center;gap:9px;margin:26px 0 11px;}
+  .um .uhead:first-child{margin-top:0;}
+  .um .uhead h2{font-size:16.5px;font-weight:800;margin:0;}
+  .um .uhead .cnt{
+    font-size:11.5px;font-weight:800;color:#fff;background:var(--sub);
+    min-width:20px;height:20px;border-radius:10px;padding:0 7px;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .um .uhead .cnt.warn{background:#e5800a;}
+  .um .ulist{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .um .urow{
+    display:flex;align-items:center;gap:10px;
+    padding:12px 14px;border-bottom:1px solid var(--line);
+  }
+  .um .urow:last-child{border-bottom:none;}
+  .um .urow.pend{background:#fffaf1;}
+  .um .uname{font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px;}
+  .um .ust{font-size:11.5px;font-weight:800;border-radius:6px;padding:3px 8px;flex-shrink:0;}
+  .um .ust.pending{color:#b26a00;background:#fff4e0;}
+  .um .ust.active{color:var(--ok);background:#e6f6ec;}
+  .um .ust.adm{color:#fff;background:var(--accent);}
+  .um .you{font-size:12px;font-weight:700;color:var(--sub);flex-shrink:0;}
+  .um .btn-ok{
+    border:none;background:var(--ok);color:#fff;font-family:inherit;
+    font-size:13px;font-weight:800;padding:8px 15px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  }
+  .um .btn-ok:hover{filter:brightness(.95);}
+  .um .clear{
+    font-family:inherit;font-size:13px;font-weight:700;color:#e5484d;
+    background:#fff;border:1px solid #f3cdcf;border-radius:8px;
+    padding:7px 13px;cursor:pointer;flex-shrink:0;
+  }
+  .um .clear:hover{background:#fdf0f0;}
+  .um .uempty{font-size:13px;color:var(--sub);font-weight:600;padding:18px 14px;text-align:center;}
+  .um .pwbox{
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:16px;max-width:380px;
+  }
+  .um .pwbox .btn-primary{width:auto;padding:10px 20px;font-size:14px;margin-top:4px;}
+
+  /* 表单元素（菜品管理页） */
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--sub);margin-bottom:5px;}
+  .field input, .field select{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:15px;font-weight:600;font-family:inherit;color:var(--text);outline:none;
+    background:#fff;
+  }
+  .field input:focus, .field select:focus{border-color:var(--accent);}
+  .field select{cursor:pointer;appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size:5px 5px, 5px 5px;background-repeat:no-repeat;
+    padding-right:34px;
+  }
+  .field.row2{display:flex;gap:10px;}
+  .field.row2 > div{flex:1;}
+
+  /* 蘸料顺序调整 */
+  .sauce-order{margin-top:8px;}
+  .sauce-order:empty{display:none;}
+  .sauce-order::before{
+    content:'点单时的显示顺序（保存后生效）';
+    display:block;font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:5px;
+  }
+  .sorow{
+    display:flex;align-items:center;gap:6px;
+    padding:6px 8px;margin-bottom:5px;
+    border:1px solid var(--line);border-radius:8px;background:#fafbfc;
+  }
+  .sorow .sname{flex:1;min-width:0;font-size:13.5px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sorow .sprice{font-size:11.5px;font-weight:800;color:#0f8a4a;flex-shrink:0;}
+  .sorow button{
+    width:26px;height:26px;border-radius:7px;border:1px solid var(--line);
+    background:#fff;color:var(--text);font-family:inherit;font-size:13px;font-weight:800;
+    cursor:pointer;flex-shrink:0;line-height:1;
+  }
+  .sorow button:hover:not(:disabled){background:#eef0f2;}
+  .sorow button:disabled{opacity:.25;cursor:not-allowed;}
+  .btn-primary{
+    width:100%;padding:13px;border-radius:10px;font-size:15px;font-weight:800;
+    cursor:pointer;border:none;background:var(--accent);color:#fff;
+  }
+  .btn-primary:active{filter:brightness(.94);}
+  .btn-ghost{
+    width:100%;padding:11px;border-radius:10px;font-size:14px;font-weight:800;
+    cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--sub);
+    margin-top:8px;
+  }
+  .btn-ghost:hover{color:var(--text);border-color:#c9ced5;}
+
+  /* 菜品管理页 */
+  .admin{
+    display:grid;grid-template-columns:340px 1fr;
+    height:calc(100vh - 56px);
+  }
+  .admin-form{
+    background:var(--panel);border-right:1px solid var(--line);
+    padding:20px;overflow-y:auto;
+  }
+  .admin-form h2{margin:0 0 16px;font-size:16px;font-weight:800;}
+
+  /* 分类定制 */
+  .cat-manage{margin-top:24px;border-top:1px solid var(--line);padding-top:16px;}
+  .cat-manage h2{margin:0 0 12px;font-size:16px;font-weight:800;}
+  .cat-add{display:flex;gap:8px;margin-bottom:10px;}
+  .cat-add input{
+    flex:1;min-width:0;padding:10px;border-radius:9px;border:1px solid var(--line);
+    font-family:inherit;font-size:14px;font-weight:600;background:#fff;color:var(--text);
+  }
+  .cat-add button{
+    padding:0 14px;border-radius:9px;border:none;background:var(--accent);color:#fff;
+    font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;flex-shrink:0;
+  }
+  .crow{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed var(--line);}
+  .crow .cname{flex:1;min-width:0;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .crow .ccount{font-size:11.5px;color:var(--sub);font-weight:800;flex-shrink:0;}
+  .crow button{
+    height:26px;min-width:26px;border-radius:7px;border:1px solid var(--line);
+    background:#fff;color:var(--text);font-family:inherit;font-size:13px;font-weight:800;
+    cursor:pointer;flex-shrink:0;line-height:1;padding:0 6px;
+  }
+  .crow button:hover:not(:disabled){background:#eef0f2;}
+  .crow button:disabled{opacity:.25;cursor:not-allowed;}
+  .crow .cdel{color:#e5484d;border-color:#f0c2c4;}
+  .crow .cdel:hover{background:#e5484d;color:#fff;border-color:#e5484d;}
+  .crow .cinput{
+    flex:1;min-width:0;padding:6px 9px;border-radius:8px;border:1px solid var(--accent);
+    font-family:inherit;font-size:14px;font-weight:700;background:#fff;color:var(--text);
+  }
+  .crow .csave{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .admin-list{overflow-y:auto;padding:16px 20px 40px;}
+  .admin-list .tip{
+    font-size:13px;color:var(--sub);font-weight:700;margin:0 0 12px;
+  }
+  .group-title{
+    font-size:13px;font-weight:800;color:var(--sub);
+    margin:16px 0 8px;letter-spacing:.5px;
+  }
+  .group-title:first-child{margin-top:0;}
+  .arow{
+    display:flex;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:10px 14px;margin-bottom:8px;
+  }
+  .arow .aemoji{font-size:24px;width:32px;text-align:center;flex-shrink:0;}
+  .arow .ainfo{flex:1;min-width:0;}
+  .arow .aname{font-weight:800;font-size:15px;}
+  .arow .adesc{font-size:12px;color:var(--sub);font-weight:600;margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .aopts{font-size:11.5px;font-weight:800;color:var(--accent);margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .asauce{font-size:11.5px;font-weight:800;color:#0f8a4a;margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .acmt{font-size:11.5px;font-weight:800;color:#1d6fd0;margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .astack{font-size:11.5px;font-weight:800;color:#8a5a00;margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .aprice{font-weight:800;color:var(--accent);font-size:15px;width:60px;text-align:right;flex-shrink:0;}
+  .arow .amove{
+    width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--text);font-size:15px;font-weight:800;line-height:1;
+    cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  }
+  .arow .amove:hover:not(:disabled){background:#eef0f2;border-color:#c9ced5;}
+  .arow .amove:disabled{opacity:.25;cursor:not-allowed;}
+  .arow .aedit{
+    border:1px solid var(--line);background:#fff;color:var(--sub);
+    font-family:inherit;font-size:13px;font-weight:700;
+    padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  }
+  .arow .aedit:hover{background:#eef0f2;color:var(--text);}
+  /* 分割线按钮与分割线行 */
+  .arow .adiv{
+    border:1px dashed #cfd3d9;background:#fff;color:var(--sub);
+    font-family:inherit;font-size:13px;font-weight:700;
+    padding:5px 10px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  }
+  .arow .adiv:hover{background:#eef0f2;color:var(--text);border-color:var(--sub);}
+  .arow.divider-row{
+    background:#fafbfc;border-style:dashed;
+  }
+  .arow.divider-row .aname{color:var(--sub);font-size:13px;font-weight:700;}
+  .arow.divider-row .aemoji{color:var(--sub);}
+  .arow.editing{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+  .arow .adel{
+    border:1px solid #f0c9cb;background:#fff;color:#e5484d;
+    font-family:inherit;font-size:13px;font-weight:700;
+    padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  }
+  .arow .adel:hover{background:#e5484d;color:#fff;border-color:#e5484d;}
+  /* 菜品上架 / 下架开关 */
+  .arow.off{opacity:.62;}
+  .arow .aoff{
+    font-size:11px;font-weight:800;color:#e5484d;background:#fdecec;
+    border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:1px;
+  }
+  .arow .asw{
+    width:46px;height:26px;border-radius:13px;border:1px solid var(--line);
+    background:#e6e8ec;position:relative;cursor:pointer;flex-shrink:0;
+    padding:0;transition:.15s;
+  }
+  .arow .asw .knob{
+    position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(31,35,41,.3);transition:.15s;
+  }
+  .arow .asw.on{background:var(--ok);border-color:var(--ok);}
+  .arow .asw.on .knob{left:22px;}
+  .admin-empty{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:70%;color:var(--sub);gap:10px;font-weight:600;
+  }
+  .admin-empty .big{font-size:46px;opacity:.5;}
+
+  /* 卡片上的「可选」标记 */
+  .card .opt-tag{
+    font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-soft);
+    border-radius:6px;padding:2px 5px;margin-left:5px;vertical-align:1px;
+  }
+
+  /* 定制选项弹窗 */
+  .modal{
+    position:fixed;inset:0;background:rgba(20,22,25,.45);
+    display:none;align-items:center;justify-content:center;z-index:120;padding:20px;
+  }
+  .modal.show{display:flex;}
+  .modal-card{
+    background:var(--panel);border-radius:16px;padding:20px;
+    width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.25);
+    max-height:calc(100vh - 40px);overflow-y:auto;
+  }
+  .modal-card h3{margin:0 0 3px;font-size:17px;font-weight:800;
+    overflow-wrap:anywhere;word-break:break-word;}
+  .modal-card h3 .mdesc-inline{font-size:17px;font-weight:800;color:var(--text);margin-left:4px;}
+  .modal-card .msub{font-size:13px;color:var(--sub);font-weight:600;margin-bottom:15px;}
+  .opt-label{font-size:12.5px;font-weight:700;color:var(--sub);margin-bottom:9px;}
+  .opt-list{display:flex;flex-wrap:wrap;gap:9px;}
+  .opt{
+    padding:9px 16px;border-radius:20px;border:1px solid var(--line);
+    background:#fff;font-family:inherit;font-size:14px;font-weight:700;
+    cursor:pointer;user-select:none;transition:.15s;color:var(--text);
+  }
+  .opt.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .opt .opp{font-size:11.5px;font-weight:800;opacity:.85;margin-left:4px;}
+  .opt.on .opp{opacity:.95;}
+  /* 可叠加蘸料：带 − n + 计数 */
+  .stack-list{display:flex;flex-wrap:wrap;gap:8px;}
+  .stack-list:empty{display:none;}
+  .stk{
+    display:flex;align-items:center;gap:10px;
+    background:#f7f8fa;border:1px solid var(--line);border-radius:10px;
+    padding:6px 8px 6px 13px;transition:.15s;
+  }
+  .stk.on{background:var(--accent-soft);border-color:var(--accent);}
+  .stk .stk-name{font-size:13.5px;font-weight:800;}
+  .stk .stk-name .opp{font-size:11.5px;font-weight:800;color:var(--accent);margin-left:4px;}
+  .stk .stk-qty{display:flex;align-items:center;gap:4px;}
+  .stk .stk-qty button{
+    width:26px;height:26px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--text);font-family:inherit;
+    font-size:15px;font-weight:800;line-height:1;cursor:pointer;
+  }
+  .stk .stk-qty button:disabled{opacity:.3;cursor:default;}
+  .stk .stk-qty .qn{min-width:20px;text-align:center;font-size:13.5px;font-weight:800;}
+  .opt.disabled{opacity:.4;cursor:not-allowed;}
+  .sauce-label{margin-top:14px;}
+  .sauce-tip{font-weight:700;color:#e5484d;margin-left:6px;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions button{
+    flex:1;width:auto;margin-top:0;padding:12px;border-radius:10px;
+    font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;border:none;
+  }
+  .modal-actions .btn-ghost{border:1px solid var(--line);color:var(--text);}
+  /* 备注输入 */
+  .note-input{
+    width:100%;box-sizing:border-box;resize:vertical;min-height:44px;
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+    font-family:inherit;font-size:13.5px;font-weight:600;color:var(--text);
+    background:#fff;outline:none;
+  }
+  .note-input:focus{border-color:var(--accent);}
+
+  /* 订单区 */
+  .order{
+    background:var(--panel);
+    border-left:1px solid var(--line);
+    display:flex;flex-direction:column;
+    height:100%;
+  }
+  .order-head{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .order-head h2{margin:0;font-size:16px;font-weight:800;}
+  .order-head .count{font-size:13px;color:var(--sub);font-weight:700;}
+  .order-head .spacer{flex:1;}
+  .clear{
+    border:none;background:transparent;color:var(--sub);font-size:13px;
+    font-weight:700;cursor:pointer;padding:4px 6px;
+  }
+  .clear:hover{color:#e5484d;}
+
+  .lines{flex:1;min-height:0;overflow-y:auto;padding:8px 16px;}
+  .empty{
+    height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--sub);gap:10px;font-weight:600;
+  }
+  .empty .big{font-size:48px;opacity:.5;}
+
+  .line{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 0;border-bottom:1px dashed var(--line);
+  }
+  .line .li-emoji{font-size:24px;width:30px;text-align:center;flex-shrink:0;}
+  .line .info{flex:1;min-width:0;}
+  .line .info .n{font-weight:800;font-size:14px;}
+  .line .info .p{font-size:12.5px;color:var(--sub);margin-top:2px;font-weight:600;}
+  .line .info .d{font-size:12px;color:var(--sub);margin-top:2px;font-weight:600;}
+  .line .info .opt{
+    font-size:12px;font-weight:800;color:var(--accent);
+    background:var(--accent-soft);border-radius:6px;
+    padding:2px 6px;margin-top:3px;display:inline-block;
+  }
+  .line .info .sauce{
+    font-size:12px;font-weight:800;color:#0f8a4a;
+    background:#e6f6ec;border-radius:6px;
+    padding:2px 6px;margin-top:3px;display:inline-block;
+  }
+  .line .info .comment{
+    font-size:12px;font-weight:800;color:#1d6fd0;
+    background:#e8f0fd;border-radius:6px;
+    padding:2px 6px;margin-top:3px;display:inline-block;
+  }
+  .line .info .stack{
+    font-size:12px;font-weight:800;color:#8a5a00;
+    background:#fff4e0;border-radius:6px;
+    padding:2px 6px;margin-top:3px;display:inline-block;
+  }
+  .line .info .note{
+    font-size:12px;font-weight:800;color:#7a4bd0;
+    background:#f0e9fd;border-radius:6px;
+    padding:2px 6px;margin-top:3px;display:inline-block;
+  }
+  .qty{
+    display:flex;align-items:center;gap:9px;flex-shrink:0;
+  }
+  .qty button{
+    width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+    background:#fff;color:var(--text);font-size:17px;font-weight:700;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .qty button.minus{color:#e5484d;border-color:#f3c9cb;}
+  .qty button.plus{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .qty .q{
+    width:42px;height:26px;text-align:center;font-weight:800;font-size:14px;
+    font-family:inherit;color:var(--text);
+    border:1px solid var(--line);border-radius:8px;background:#fff;
+    padding:0 2px;
+  }
+  .qty .q:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+  .line .amt{width:56px;text-align:right;font-weight:800;color:var(--accent);flex-shrink:0;}
+
+  .foot{
+    border-top:1px solid var(--line);padding:14px 16px;
+    background:var(--panel);flex-shrink:0;
+  }
+  .edit-bar{
+    display:flex;align-items:center;gap:8px;margin-bottom:10px;
+    background:var(--accent-soft);border:1px solid #ffd7c4;border-radius:10px;
+    padding:9px 12px;font-size:12.5px;font-weight:700;color:#b24a1f;
+  }
+  .edit-bar .etxt{flex:1;min-width:0;overflow-wrap:anywhere;}
+  .edit-bar button{
+    font-family:inherit;font-size:12px;font-weight:800;color:#b24a1f;
+    background:#fff;border:1px solid #ffd7c4;border-radius:8px;padding:5px 10px;cursor:pointer;flex-shrink:0;
+  }
+  .total-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
+  .total-row .lbl{font-size:14px;font-weight:700;color:var(--sub);}
+  .total-row .val{font-size:24px;font-weight:900;color:var(--accent);}
+  .submit{
+    width:100%;border:none;border-radius:10px;
+    background:var(--accent);color:#fff;font-size:16px;font-weight:800;
+    padding:14px;cursor:pointer;letter-spacing:1px;
+  }
+  .submit:disabled{background:#d5d7db;cursor:not-allowed;}
+  .submit:active:not(:disabled){filter:brightness(.94);}
+
+  /* 成功提示 */
+  .toast{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);
+    background:rgba(31,35,41,.95);color:#fff;padding:22px 30px;border-radius:16px;
+    text-align:center;opacity:0;pointer-events:none;transition:.22s;
+    z-index:99;min-width:220px;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  .toast .ico{font-size:38px;}
+  .toast .t1{font-size:17px;font-weight:800;margin-top:8px;}
+  .toast .t2{font-size:13px;color:#c8ccd2;margin-top:5px;font-weight:600;}
+
+  /* 中等宽度：已提交订单保持左半屏，右栏收窄 */
+  @media (min-width:821px) and (max-width:1200px){
+    .layout{grid-template-columns:50% 1fr 290px;}
+  }
+
+  /* 窄屏：已提交订单 / 菜单 / 当前订单 上下堆叠，全部完整可见 */
+  @media (max-width:820px){
+    html,body{height:auto;overflow:auto;}
+    .layout{grid-template-columns:1fr;grid-template-rows:auto;height:auto;min-height:calc(100vh - 56px);}
+    .history{height:auto;min-height:0;overflow:visible;border-right:none;border-bottom:1px solid var(--line);}
+    .history-body{overflow:visible;flex:none;max-height:none;}
+    .menu{overflow:visible;padding-bottom:14px;}
+    .order{
+      height:auto;border-left:none;border-top:1px solid var(--line);
+      border-radius:0;box-shadow:none;
+    }
+    .lines{overflow:visible;flex:none;}
+    .foot{position:sticky;bottom:0;}
+    /* 菜品管理页改为上下堆叠 */
+    .admin{grid-template-columns:1fr;height:auto;}
+    .admin-form{border-right:none;border-bottom:1px solid var(--line);}
+    .admin-list{overflow:visible;}
+  }
+</style>
+</head>
+<body>
+<!-- 登录页 -->
+<div id="loginPage">
+  <div class="login-card">
+    <h1>🍢 小吃点单</h1>
+    <div class="sub" id="loginSub">请登录后使用</div>
+
+    <div id="loginForm">
+      <div class="field">
+        <label>用户名</label>
+        <input id="lgUser" type="text" placeholder="请输入用户名" maxlength="16" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="lgPass" type="password" placeholder="请输入密码" maxlength="20" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="lgLogin">登录</button>
+      <div class="login-msg" id="lgMsg"></div>
+      <div class="login-switch">还没有账号？<button id="toRegister">注册普通用户</button></div>
+    </div>
+
+    <div id="registerForm" style="display:none">
+      <div class="field">
+        <label>用户名</label>
+        <input id="rgUser" type="text" placeholder="2-16 个字符" maxlength="16" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="rgPass" type="password" placeholder="至少 3 位" maxlength="20" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>确认密码</label>
+        <input id="rgPass2" type="password" placeholder="再输一次" maxlength="20" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" id="rgSubmit">提交注册</button>
+      <div class="login-msg" id="rgMsg"></div>
+      <div class="login-switch">已有账号？<button id="toLogin">返回登录</button></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <h1>🍢 小吃点单</h1>
+  <div class="nav">
+    <button class="nav-btn active" data-view="order">点单</button>
+    <button class="nav-btn" data-view="menu">菜品管理</button>
+    <button class="nav-btn" data-view="users" id="navUsers" style="display:none">用户管理</button>
+  </div>
+  <div class="spacer"></div>
+  <span class="cloud" id="cloudBadge" title="云端同步状态"><span class="dot"></span><span id="cloudText">连接中…</span></span>
+  <span class="count" id="headCount" style="font-size:13px;color:var(--sub);font-weight:700;"></span>
+  <span class="user-chip"><span id="whoami">—</span><span class="role user" id="whoRole">普通用户</span></span>
+  <button class="clear" id="logoutBtn">退出</button>
+</header>
+
+<div class="view active" id="view-order">
+<div class="layout">
+  <!-- 已提交订单（最左） -->
+  <aside class="history">
+    <div class="history-head">
+      <div class="htabs" id="htabs">
+        <button class="htab active" data-tab="pending">待处理<span class="hnum" id="tabPending">0</span></button>
+        <button class="htab" data-tab="done">已完成<span class="hnum" id="tabDone">0</span></button>
+      </div>
+      <div class="spacer"></div>
+      <button class="clear" id="clearHistory">清空</button>
+    </div>
+    <div class="history-body" id="history" data-tab="pending"></div>
+  </aside>
+
+  <!-- 菜单 -->
+  <main class="menu">
+    <div class="cats" id="cats"></div>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <!-- 订单 -->
+  <aside class="order" id="orderPanel">
+    <div class="order-head" id="orderHead">
+      <h2>我的订单</h2>
+      <span class="count" id="orderCount">0 件</span>
+      <div class="spacer"></div>
+      <button class="clear" id="clearBtn">清空</button>
+    </div>
+    <div class="lines" id="lines"></div>
+    <div class="foot">
+      <div class="edit-bar" id="editBar" style="display:none">
+        <span class="etxt" id="editBarText"></span>
+        <button type="button" id="editCancel">取消修改</button>
+      </div>
+      <div class="total-row">
+        <span class="lbl">合计</span>
+        <span class="val" id="total">€0.00</span>
+      </div>
+      <button class="submit" id="submitBtn" disabled>提交订单</button>
+    </div>
+  </aside>
+</div>
+</div>
+
+<!-- 菜品管理页面 -->
+<div class="view" id="view-menu">
+  <div class="admin">
+    <div class="admin-form">
+      <h2 id="formTitle">新增菜品</h2>
+      <div class="field">
+        <label>名称</label>
+        <input id="fName" type="text" placeholder="例如：炸鸡排" maxlength="30">
+      </div>
+      <div class="field row2">
+        <div>
+          <label>价格（欧元）</label>
+          <input id="fPrice" type="number" min="0" step="0.5" placeholder="0">
+        </div>
+        <div>
+          <label>图标</label>
+          <input id="fEmoji" type="text" placeholder="🍗" maxlength="4">
+        </div>
+      </div>
+      <div class="field">
+        <label>分类</label>
+        <select id="fCat"></select>
+        <input id="fCatNew" type="text" placeholder="新分类名称" maxlength="8" style="display:none;margin-top:8px">
+      </div>
+      <div class="field">
+        <label>简介（可选）</label>
+        <input id="fDesc" type="text" placeholder="例如：现炸 · 多汁" maxlength="20">
+      </div>
+      <div class="field">
+        <label>定制选项（可选，逗号分隔）</label>
+        <input id="fOpts" type="text" placeholder="例如：放汁, 不放汁, 加辣">
+      </div>
+      <div class="field">
+        <label>蘸料（可选，逗号分隔，加价用 + 如 芝士+1）</label>
+        <input id="fSauces" type="text" placeholder="例如：Sweet Chili, Knoflooksaus, Extra saus+1">
+        <div class="sauce-order" id="sauceOrder"></div>
+      </div>
+      <div class="field">
+        <label>评论（可选，逗号分隔，加价用 + 如 多加辣+1）</label>
+        <input id="fComments" type="text" placeholder="例如：少盐, 多加辣+1, 不要洋葱">
+        <div class="sauce-order" id="commentOrder"></div>
+      </div>
+      <div class="field">
+        <label>可叠加蘸料（可选，逗号分隔，点单时可点多次叠加）</label>
+        <input id="fStacks" type="text" placeholder="例如：芝士酱+1, 培根+2">
+        <div class="sauce-order" id="stackOrder"></div>
+      </div>
+      <button class="btn-primary" id="saveDish">＋ 添加菜品</button>
+      <button class="btn-ghost" id="cancelEdit" style="display:none">取消修改</button>
+
+      <div class="cat-manage">
+        <h2>分类定制</h2>
+        <div class="cat-add">
+          <input id="newCat" type="text" placeholder="新分类名称" maxlength="8">
+          <button id="addCat">添加</button>
+        </div>
+        <div id="catRows"></div>
+      </div>
+    </div>
+
+    <div class="admin-list">
+      <p class="tip" id="adminTip">全部菜品</p>
+      <div id="adminList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 用户管理页面（仅管理员） -->
+<div class="view" id="view-users">
+  <div class="um">
+    <div class="uhead"><h2>待审核注册</h2><span class="cnt warn" id="pendCount">0</span></div>
+    <div class="ulist" id="pendingUsers"></div>
+
+    <div class="uhead"><h2>全部用户</h2><span class="cnt" id="allCount">0</span></div>
+    <div class="ulist" id="allUsers"></div>
+
+    <div class="uhead"><h2>修改我的密码</h2></div>
+    <div class="pwbox">
+      <div class="field">
+        <label>原密码</label>
+        <input id="pwOld" type="password" maxlength="20" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label>新密码</label>
+        <input id="pwNew" type="password" maxlength="20" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" id="pwSave">保存新密码</button>
+      <div class="login-msg" id="pwMsg"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="optModal">
+  <div class="modal-card">
+    <h3 id="optTitle">菜品</h3>
+    <div class="msub" id="optPrice"></div>
+    <div id="optSection">
+      <div class="opt-label">选择需求（单选，不选即为默认）</div>
+      <div class="opt-list" id="optList"></div>
+    </div>
+    <div id="sauceSection">
+      <div class="opt-label sauce-label">选择蘸料（可多选）<span class="sauce-tip" id="sauceTip"></span></div>
+      <div class="opt-list" id="sauceList"></div>
+    </div>
+    <div id="commentSection">
+      <div class="opt-label sauce-label">选择评论（可多选）</div>
+      <div class="opt-list" id="commentList"></div>
+    </div>
+    <div id="stackSection">
+      <div class="opt-label sauce-label">可叠加蘸料（点 + 可叠多份，价格叠加）</div>
+      <div class="stack-list" id="stackList"></div>
+    </div>
+    <div id="noteSection">
+      <div class="opt-label sauce-label">备注（可选，仅对这一份）</div>
+      <textarea id="optNote" class="note-input" rows="2" maxlength="60" placeholder="例如：不要辣、多放番茄酱、单独打包"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="optCancel">取消</button>
+      <button class="btn-primary" id="optAdd">加入订单</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="ico" id="toastIco">✅</div>
+  <div class="t1" id="toastTitle">下单成功</div>
+  <div class="t2" id="toastSub"></div>
+</div>
+
+<script>
+// 菜单数据（默认）
+const DEFAULT_MENU = [
+  {id:'c1',  name:'盐酥鸡',      desc:'外酥里嫩 · 椒盐',   price:18, emoji:'🍗', cat:'炸物'},
+  {id:'c2',  name:'薯条',        desc:'粗薯 · 番茄酱',     price:12, emoji:'🍟', cat:'炸物'},
+  {id:'c3',  name:'鸡米花',      desc:'一口爆汁',          price:16, emoji:'🍤', cat:'炸物'},
+  {id:'c4',  name:'洋葱圈',      desc:'金黄酥脆',          price:13, emoji:'🧅', cat:'炸物'},
+
+  {id:'b1',  name:'烤羊肉串',    desc:'孜然味 · 3 串',     price:15, emoji:'🍢', cat:'烤串'},
+  {id:'b2',  name:'烤鸡翅',      desc:'蜜汁 · 2 只',       price:14, emoji:'🍖', cat:'烤串'},
+  {id:'b3',  name:'烤玉米',      desc:'黄油香烤',          price:8,  emoji:'🌽', cat:'烤串'},
+  {id:'b4',  name:'烤面筋',      desc:'麻辣刷酱',          price:6,  emoji:'🥖', cat:'烤串'},
+
+  {id:'m1',  name:'手抓饼',      desc:'加蛋加里脊',        price:11, emoji:'🥞', cat:'主食'},
+  {id:'m2',  name:'肉夹馍',      desc:'肥瘦相间',          price:13, emoji:'🥙', cat:'主食', opts:['放汁','不放汁','加辣'], sauces:[{name:'蒜蓉酱',price:0},{name:'甜辣酱',price:0},{name:'双份酱',price:1}]},
+  {id:'m3',  name:'煎饼果子',    desc:'脆皮薄脆',          price:10, emoji:'🌯', cat:'主食', opts:['加蛋','加薄脆','不放香菜']},
+  {id:'m4',  name:'关东煮',      desc:'自选 4 串',         price:14, emoji:'🍢', cat:'主食'},
+
+  {id:'d1',  name:'珍珠奶茶',    desc:'少冰 · 半糖',       price:12, emoji:'🧋', cat:'饮品'},
+  {id:'d2',  name:'柠檬水',      desc:'鲜柠檬 · 冰',       price:8,  emoji:'🍋', cat:'饮品'},
+  {id:'d3',  name:'酸梅汤',      desc:'冰镇解腻',          price:7,  emoji:'🥤', cat:'饮品'},
+  {id:'d4',  name:'豆奶',        desc:'现磨热饮',          price:6,  emoji:'🥛', cat:'饮品'},
+];
+
+const STORE_KEY = 'snack_cart_v1';
+const ORDER_KEY = 'snack_orders_v1';
+const MENU_KEY  = 'snack_menu_v1';
+const CAT_KEY   = 'snack_cats_v1';
+const USER_KEY  = 'snack_users_v1';   // 账号：{u,p,role:'admin'|'user',status:'active'|'pending'}
+const SESSION_KEY = 'snack_session_v1';
+
+// ===== 账号 / 权限 =====
+let currentUser = null;
+let users = loadUsers();
+
+function loadUsers(){
+  try{
+    const v = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+    if(Array.isArray(v) && v.length) return v;
+  }catch(e){}
+  // 首次使用：内置管理员
+  return [{u:'admin', p:'admin123', role:'admin', status:'active'}];
+}
+function saveUsers(){ localStorage.setItem(USER_KEY, JSON.stringify(users)); cloudPush('users'); }
+function findUser(name){ return users.find(x=>x.u===name); }
+const isAdmin = () => !!currentUser && currentUser.role==='admin';
+
+const $ = s => document.querySelector(s);
+// 金额格式化：四舍五入到分，统一两位小数
+const eu = n => '€' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+// 购物车：按「菜品 + 选项 + 蘸料」拆成多行 [{id, opts:[], sauces:[], qty}]
+let cart = loadCart();
+function loadCart(){
+  try{
+    const v = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+    if(!Array.isArray(v)) return [];
+    return v.filter(l=>l && l.id && l.qty>0).map(l=>({
+      id: l.id,
+      name: typeof l.name === 'string' ? l.name : '',
+      opts: Array.isArray(l.opts) ? l.opts : [],
+      sauces: Array.isArray(l.sauces) ? l.sauces : [],
+      comments: Array.isArray(l.comments) ? l.comments : [],
+      stacks: Array.isArray(l.stacks) ? l.stacks : [],
+      note: typeof l.note === 'string' ? l.note : '',
+      qty: l.qty
+    }));
+  }catch(e){ return []; }
+}
+let orders = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+let editingOrderNo = null;   // 正在修改的待处理订单单号（null 表示新建订单）
+let menu = JSON.parse(localStorage.getItem(MENU_KEY) || 'null') || DEFAULT_MENU.slice();
+// 分类：可自定义增删改名与排序
+let cats = loadCats();
+function loadCats(){
+  try{
+    const v = JSON.parse(localStorage.getItem(CAT_KEY) || 'null');
+    if(Array.isArray(v) && v.length) return v.filter(c=>typeof c==='string' && c.trim());
+  }catch(e){}
+  return [...new Set(DEFAULT_MENU.map(i=>i.cat))];
+}
+function saveCats(){ localStorage.setItem(CAT_KEY, JSON.stringify(cats)); cloudPush('cats'); }
+// 全部分类（含历史数据里存在但未登记的分类）
+function allCats(){
+  const extra = [...new Set(menu.map(m=>m.cat))].filter(c=>!cats.includes(c));
+  return [...cats, ...extra];
+}
+// 有菜品的分类（点单页只显示这些）
+function usedCats(){ return allCats().filter(c=>menu.some(m=>!m.divider && !m.off && m.cat===c)); }
+function getCats(){ return ['全部', ...usedCats()]; }
+function ensureCat(c){ if(c && !cats.includes(c)){ cats.push(c); saveCats(); } }
+let activeCat = '全部';
+
+function saveMenu(){ localStorage.setItem(MENU_KEY, JSON.stringify(menu)); cloudPush('menu'); }
+
+// 同一菜品 + 同一组选项 + 同一组蘸料 + 同一组可叠加蘸料 + 同一备注视为同一行
+function lineKey(id, opts, sauces, comments, stacks, note){
+  const s = (sauces||[]).map(x=>x.name).sort().join(',');
+  const c = (comments||[]).map(x=>x.name).sort().join(',');
+  const k = (stacks||[]).map(x=>x.name + 'x' + (x.n||1)).sort().join(',');
+  return id + '#' + [...opts].sort().join(',') + '|' + s + '|' + c + '|' + k + '|' + (note||'');
+}
+// 蘸料展示文本
+function sauceText(sauces){
+  return (sauces||[]).map(s=>s.name + (s.price>0?` +${eu(s.price)}`:'')).join('、');
+}
+// 可叠加蘸料展示文本（显示份数与叠加后的总加价）
+function stackText(stacks){
+  return (stacks||[]).map(s=>`${s.name}×${s.n||1}` + (s.price>0?` +${eu(s.price*(s.n||1))}`:'')).join('、');
+}
+// 可叠加蘸料的加价合计
+function stackSum(stacks){
+  return (stacks||[]).reduce((s,x)=>s + (Number(x.price)||0) * (x.n||1), 0);
+}
+// 把蘸料按菜品里设定的顺序重排（保证订单里顺序与设定一致）
+function orderSauces(dish, list){
+  if(!dish || !dish.sauces) return (list||[]).map(s=>({name:s.name, price:s.price}));
+  return dish.sauces
+    .filter(s=>(list||[]).some(x=>x.name===s.name))
+    .map(s=>({name:s.name, price:s.price}));
+}
+// 把评论按菜品里设定的顺序重排
+function orderComments(dish, list){
+  if(!dish || !dish.comments) return (list||[]).map(c=>({name:c.name, price:c.price}));
+  return dish.comments
+    .filter(c=>(list||[]).some(x=>x.name===c.name))
+    .map(c=>({name:c.name, price:c.price}));
+}
+// 可叠加蘸料按菜品里设定的顺序重排（保留各自份数）
+function orderStacks(dish, list){
+  if(!dish || !dish.stacks) return (list||[]).map(s=>({name:s.name, price:s.price, n:s.n||1}));
+  return dish.stacks
+    .filter(s=>(list||[]).some(x=>x.name===s.name))
+    .map(s=>{
+      const hit = (list||[]).find(x=>x.name===s.name);
+      return {name:s.name, price:s.price, n:hit.n||1};
+    });
+}
+// 单份价格 = 菜价 + 蘸料加价 + 评论加价 + 可叠加蘸料加价
+function unitPrice(dish, sauces, comments, stacks){
+  return dish.price
+    + (sauces||[]).reduce((s,x)=>s + (Number(x.price)||0), 0)
+    + (comments||[]).reduce((s,x)=>s + (Number(x.price)||0), 0)
+    + stackSum(stacks);
+}
+// 某菜品在购物车中的总数量（含不同选项/蘸料）
+function dishQty(id){
+  return cart.filter(l=>l.id===id).reduce((s,l)=>s+l.qty,0);
+}
+// 增减数量（delta 为负则减少）
+function addItem(id, opts=[], sauces=[], comments=[], stacks=[], note='', delta=1){
+  const dish = menu.find(m=>m.id===id);
+  // 蘸料/评论/叠加蘸料统一按菜品设定顺序存储
+  const norm = orderSauces(dish, sauces);
+  const cmts = orderComments(dish, comments);
+  const stks = orderStacks(dish, stacks);
+  const nt = (note||'').trim();
+  const key = lineKey(id, opts, norm, cmts, stks, nt);
+  const line = cart.find(l=>lineKey(l.id,l.opts,l.sauces,l.comments,l.stacks,l.note)===key);
+  if(line){
+    line.qty += delta;
+    if(line.qty <= 0) cart = cart.filter(l=>l!==line);
+  }else if(delta > 0){
+    cart.push({id, opts:[...opts], sauces:norm, comments:cmts, stacks:stks, note:nt, qty:delta});
+  }
+  save(); renderMenu(); renderOrder();
+}
+
+// 菜品在点单页「全部」中的顺序（找不到的排最后）
+function menuPos(item){
+  let k = item.id ? menu.findIndex(m=>!m.divider && m.id===item.id) : -1;
+  if(k<0 && item.name) k = menu.findIndex(m=>!m.divider && m.name===item.name);
+  return k<0 ? Infinity : k;
+}
+
+// 购物车行 / 订单行 → 菜单菜品：先按 id，找不到再按菜名兜底（兼容旧订单里没有 id 的行）
+function dishOfLine(line){
+  if(!line) return null;
+  let d = line.id ? menu.find(m=>!m.divider && m.id===line.id) : null;
+  if(!d && line.name) d = menu.find(m=>!m.divider && m.name===line.name);
+  return d || null;
+}
+
+// 已提交订单里单行的单价（含蘸料/评论加价；旧订单无 unit 则按菜单 + 加价推算）
+function itemUnit(item){
+  if(Number.isFinite(item.unit)) return item.unit;
+  const dish = menu.find(m=>!m.divider && (m.id===item.id || (!item.id && m.name===item.name)))
+            || menu.find(m=>!m.divider && m.name===item.name);
+  const base = dish ? Number(dish.price)||0 : 0;
+  return base
+    + (item.sauces||[]).reduce((s,x)=>s+(Number(x.price)||0), 0)
+    + (item.comments||[]).reduce((s,x)=>s+(Number(x.price)||0), 0)
+    + stackSum(item.stacks);
+}
+
+// 已提交订单：待处理 / 已完成
+let historyTab = 'pending';
+
+// 「已完成」按点击先后排序（后点的排前面）；「待处理」里被退回的订单同样置顶
+let lastClickAt = 0;
+const nextClickAt = () => (lastClickAt = Math.max(Date.now(), lastClickAt + 1));
+
+// 渲染已提交订单
+function renderHistory(){
+  const done = orders.filter(o=>o.done);
+  const pend = orders.filter(o=>!o.done);
+  $('#tabPending').textContent = pend.length;
+  $('#tabDone').textContent = done.length;
+  document.querySelectorAll('#htabs .htab').forEach(b=>
+    b.classList.toggle('active', b.dataset.tab===historyTab));
+  $('#history').dataset.tab = historyTab;
+  $('#clearHistory').textContent = historyTab==='done' ? '清空已完成' : '清空';
+
+  // 已完成：按点击完成的时间，后点的在前
+  // 待处理：被退回的按退回点击先后置顶；其余按单号从小到大（新提交的排最后）
+  const list = historyTab==='done'
+    ? done.slice().sort((a,b)=>(b.doneAt||0)-(a.doneAt||0))
+    : pend.slice().sort((a,b)=>{
+        const ra = a.backAt ? 0 : 1, rb = b.backAt ? 0 : 1;
+        if(ra !== rb) return ra - rb;                       // 退回的排在最前
+        if(a.backAt && b.backAt) return b.backAt - a.backAt; // 退回的按点击先后（后点的在前）
+        return (Number(a.no)||0) - (Number(b.no)||0);        // 其余按单号升序 → 新单在末尾
+      });
+  const newestNo = pend.length ? Math.max(...pend.map(o=>Number(o.no)||0)) : -1;
+  const emptyText = historyTab==='done' ? '还没有已完成的订单' : '还没有已提交的订单';
+  const emptySub  = historyTab==='done' ? '在「待处理」里点一下订单就算完成' : '提交后会排在最下面';
+  $('#history').innerHTML = list.length ? list.map((o,idx)=>{
+    const items = o.items.slice().sort((a,b)=>menuPos(a)-menuPos(b)).map(i=>{
+      const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
+      const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${i.sauces.map(s=>s.name+(Number(s.price)>0?`+${eu(s.price)}`:'')).join('+')}）</span>` : '';
+      const cmts = i.comments && i.comments.length ? ` <span class="hcmt">（${i.comments.map(c=>c.name+(Number(c.price)>0?`+${eu(c.price)}`:'')).join('+')}）</span>` : '';
+      const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
+      const note = i.note ? ` <span class="hnote">〔备注:${i.note}〕</span>` : '';
+      const sum = itemUnit(i) * (i.q||1);
+      return `<div class="hline"><span class="hinfo">${i.q}x ${i.name}${i.desc?' '+i.desc:''}${opts}${sauces}${cmts}${stks}${note}</span><span class="hprice">${eu(sum)}</span></div>`;
+    }).join('');
+    return `<div class="hitem ${historyTab==='pending' && (Number(o.no)||0)===newestNo ? 'newest':''}" data-no="${o.no}">
+      <div class="hrow">
+        <span class="hno">${o.no}</span>
+        <span class="htime">${o.time}</span>
+      </div>
+      <div class="hitems">${items}</div>
+      <div class="hrow">
+        <span class="hcount">${o.count} 件</span>
+        <span class="hright">
+          ${historyTab==='pending' ? `<button class="hedit" data-edit="${o.no}">修改</button>` : ''}
+          <span class="htotal">${eu(o.total)}</span>
+        </span>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="big">🧾</div><div>${emptyText}</div><div style="font-size:12px">${emptySub}</div></div>`;
+}
+
+// 渲染分类
+function renderCats(){
+  $('#cats').innerHTML = getCats().map(c =>
+    `<div class="cat ${c===activeCat?'active':''}" data-cat="${c}">${c}</div>`
+  ).join('');
+  // 更新菜品表单的分类下拉（含空分类）+「新分类」入口
+  const cur = $('#fCat').value;
+  const list = allCats();
+  $('#fCat').innerHTML = list.map(c=>`<option value="${c}">${c}</option>`).join('')
+    + `<option value="__new__">＋ 新分类…</option>`;
+  if(cur === '__new__' || list.includes(cur)) $('#fCat').value = cur;
+}
+
+// 渲染菜单
+function renderMenu(){
+  // 下架的菜品不在点单页显示；若当前分类已无在售菜品则回到「全部」
+  if(activeCat!=='全部' && !usedCats().includes(activeCat)) activeCat = '全部';
+  const avail = menu.filter(i=>!i.off);
+  const isAll = activeCat==='全部';
+  const list = isAll ? avail : avail.filter(i=>i.cat===activeCat);
+  // 按分割线切成若干段；「全部」时先按分类聚合（同一分类归为一段，段序按首次出现顺序）
+  const blocks = [];
+  if(isAll){
+    const order = [];
+    const groups = new Map();
+    list.forEach(i=>{
+      const c = i.cat || '其他';
+      if(!groups.has(c)){ groups.set(c, []); order.push(c); }
+      groups.get(c).push(i);
+    });
+    order.forEach(c=>{
+      blocks.push({seg:c});
+      let cur = [];
+      groups.get(c).forEach(i=>{
+        if(i.divider){ blocks.push({cards:cur}); cur = []; blocks.push({div:true}); return; }
+        cur.push(i);
+      });
+      blocks.push({cards:cur});
+    });
+  } else {
+    let cur = [];
+    list.forEach(i=>{
+      if(i.divider){ blocks.push({cards:cur}); cur = []; blocks.push({div:true}); return; }
+      cur.push(i);
+    });
+    blocks.push({cards:cur});
+  }
+
+  const inner = blocks.map(b=>{
+    if(b.div) return `<div class="divider"></div>`;
+    if(b.seg) return `<div class="seg"><span class="seg-name">${b.seg}</span><span class="seg-line"></span></div>`;
+    if(!b.cards.length) return '';
+    const cards = b.cards.map(i=>{
+      const q = dishQty(i.id);
+      const hasOpts = (i.opts && i.opts.length) || (i.sauces && i.sauces.length);
+      return `<div class="card" data-id="${i.id}">
+        ${q?`<span class="in-cart">${q}</span>`:''}
+        <div class="emoji">${i.emoji}</div>
+        <div class="name">${i.name}${hasOpts?'<span class="opt-tag">可选</span>':''}</div>
+        <div class="desc">${i.desc||''}</div>
+        <div class="row">
+          <span class="price">${eu(i.price)}</span>
+          <button class="add" data-add="${i.id}">+</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="chunk">${cards}</div>`;
+  }).join('');
+
+  $('#grid').innerHTML = inner + `<div class="chunk"><div class="add-card" id="addCard"><span class="plus">＋</span><span>新增菜品</span></div></div>`;
+}
+
+// 渲染订单
+function renderOrder(){
+  let count = 0, total = 0;
+  const lines = cart.map((l,idx)=>{
+    const item = dishOfLine(l);
+    if(!item) return '';
+    const q = l.qty;
+    const chosen = orderSauces(item, l.sauces);   // 按菜品设定顺序显示
+    const chosenCmts = orderComments(item, l.comments);
+    const chosenStks = orderStacks(item, l.stacks);
+    const unit = unitPrice(item, chosen, chosenCmts, chosenStks);
+    count += q; total += unit*q;
+    const optText = l.opts.length ? `<div class="opt">${l.opts.join(' · ')}</div>` : '';
+    const sText = chosen.length ? `<div class="sauce">蘸料：${sauceText(chosen)}</div>` : '';
+    const cText = chosenCmts.length ? `<div class="comment">评论：${sauceText(chosenCmts)}</div>` : '';
+    const kText = chosenStks.length ? `<div class="stack">叠加：${stackText(chosenStks)}</div>` : '';
+    const nText = l.note ? `<div class="note">备注：${l.note}</div>` : '';
+    const dText = item.desc ? `<div class="d">${item.desc}</div>` : '';
+    return `<div class="line">
+      <span class="li-emoji">${item.emoji}</span>
+      <div class="info">
+        <div class="n">${item.name}</div>
+        ${dText}
+        ${optText}
+        ${sText}
+        ${cText}
+        ${kText}
+        ${nText}
+        <div class="p">${eu(unit)} × ${q}</div>
+      </div>
+      <div class="qty">
+        <button class="minus" data-dec="${idx}">−</button>
+        <input class="q" data-qty="${idx}" value="${q}" inputmode="numeric" autocomplete="off" aria-label="数量">
+        <button class="plus" data-inc="${idx}">+</button>
+      </div>
+      <span class="amt">${eu(unit*q)}</span>
+    </div>`;
+  }).join('');
+
+  $('#lines').innerHTML = lines || `<div class="empty"><div class="big">🛒</div><div>还没有选择小吃</div><div style="font-size:12px">点击左侧菜单加入订单</div></div>`;
+  $('#orderCount').textContent = count + ' 件';
+  $('#headCount').textContent = count ? `已选 ${count} 件` : '';
+  $('#total').textContent = eu(total);
+  const editing = editingOrderNo != null;
+  $('#submitBtn').disabled = count===0;
+  $('#submitBtn').textContent = count
+    ? `${editing ? '保存修改' : '提交订单'} · ${eu(total)}`
+    : (editing ? '保存修改' : '提交订单');
+  const bar = $('#editBar');
+  if(bar){
+    bar.style.display = editing ? 'flex' : 'none';
+    if(editing) $('#editBarText').textContent = `正在修改订单 #${editingOrderNo}，改好后点「保存修改」`;
+  }
+}
+
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(cart)); }
+function saveOrders(){ localStorage.setItem(ORDER_KEY, JSON.stringify(orders)); cloudPush('orders'); }
+
+// 按行序号增减（订单列表里的 + / −）
+function changeLineQty(idx, delta){
+  const line = cart[idx];
+  if(!line) return;
+  line.qty += delta;
+  if(line.qty <= 0) cart.splice(idx, 1);
+  save(); renderMenu(); renderOrder();
+}
+
+// 手动输入数量（0 视为删除该行）
+function setLineQty(idx, val){
+  const line = cart[idx];
+  if(!line) return;
+  let n = parseInt(val, 10);
+  if(!Number.isFinite(n)) n = line.qty;          // 输入为空/非法 → 还原
+  n = Math.max(0, Math.min(999, n));
+  if(n === 0) cart.splice(idx, 1);
+  else line.qty = n;
+  save(); renderMenu(); renderOrder();
+}
+
+// 事件委托
+$('#cats').addEventListener('click', e=>{
+  const el = e.target.closest('.cat');
+  if(!el) return;
+  activeCat = el.dataset.cat;
+  renderCats(); renderMenu();
+});
+
+$('#grid').addEventListener('click', e=>{
+  // 新增菜品卡片 → 切到菜品管理页
+  if(e.target.closest('#addCard')){ switchView('menu'); return; }
+  // 找出被点的菜品
+  const add = e.target.closest('[data-add]');
+  const card = e.target.closest('.card');
+  const id = add ? add.dataset.add : (card ? card.dataset.id : null);
+  if(!id) return;
+  const dish = menu.find(m=>m.id===id);
+  if(!dish) return;
+  // 只有带选择（需求/蘸料/评论/叠加蘸料）的菜品才弹窗并可备注，其余直接加入
+  if((dish.opts && dish.opts.length) || (dish.sauces && dish.sauces.length) || (dish.stacks && dish.stacks.length) || (dish.comments && dish.comments.length)){ openOpt(id); return; }
+  addItem(id, [], []);
+  flashCard(id);
+});
+
+// 定制选项 / 蘸料 / 评论弹窗
+let optDishId = null;
+const optSel = new Set();     // 已选「需求」
+const sauceSel = new Set();   // 已选蘸料名
+const commentSel = new Set(); // 已选评论名
+const stackSel = new Map();   // 可叠加蘸料：名称 → 份数（可叠加）
+
+function openOpt(id){
+  const dish = menu.find(m=>m.id===id);
+  if(!dish) return;
+  const hasOpts = !!(dish.opts && dish.opts.length);
+  const hasSauces = !!(dish.sauces && dish.sauces.length);
+  const hasStks = !!(dish.stacks && dish.stacks.length);
+  const hasCmts = !!(dish.comments && dish.comments.length);
+  const hasChoice = hasOpts || hasSauces || hasStks || hasCmts;
+  if(!hasChoice) return;   // 无选择的菜品不弹窗、不带备注
+  optDishId = id;
+  optSel.clear(); sauceSel.clear(); commentSel.clear(); stackSel.clear();
+  $('#optNote').value = '';
+
+  const titleEl = $('#optTitle');
+  titleEl.textContent = `${dish.emoji} ${dish.name}`;
+  if(dish.desc){
+    const sp = document.createElement('span');
+    sp.className = 'mdesc-inline';
+    sp.textContent = dish.desc;
+    titleEl.append(' ', sp);   // 简介直接跟在菜名后面
+  }
+  $('#optSection').style.display = hasOpts ? 'block' : 'none';
+  $('#sauceSection').style.display = hasSauces ? 'block' : 'none';
+  $('#stackSection').style.display = hasStks ? 'block' : 'none';
+  $('#commentSection').style.display = hasCmts ? 'block' : 'none';
+  $('#noteSection').style.display = hasChoice ? 'block' : 'none';
+
+  $('#optList').innerHTML = hasOpts
+    ? dish.opts.map((o,i)=>`<button class="opt" data-oi="${i}">${o}</button>`).join('')
+    : '';
+  $('#sauceList').innerHTML = hasSauces
+    ? dish.sauces.map((s,i)=>`<button class="opt" data-si="${i}">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}</span>`:''}</button>`).join('')
+    : '';
+  $('#commentList').innerHTML = hasCmts
+    ? dish.comments.map((c,i)=>`<button class="opt" data-ci="${i}">${c.name}${c.price>0?`<span class="opp">+${eu(c.price)}</span>`:''}</button>`).join('')
+    : '';
+  renderStackList();
+
+  refreshSauceLock();
+  $('#optModal').classList.add('show');
+}
+// 可叠加蘸料：每项带 − 份数 + 
+function renderStackList(){
+  const dish = menu.find(m=>m.id===optDishId);
+  if(!dish) return;
+  $('#stackList').innerHTML = (dish.stacks||[]).map((s,i)=>{
+    const n = stackSel.get(s.name) || 0;
+    return `<div class="stk ${n>0?'on':''}" data-sk="${i}">
+      <span class="stk-name">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}/份</span>`:''}</span>
+      <div class="stk-qty">
+        <button data-sk-dec="${i}" ${n>0?'':'disabled'}>−</button>
+        <span class="qn">${n}</span>
+        <button data-sk-inc="${i}">+</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+// 可叠加蘸料：点一下整行也算加一份
+$('#stackList').addEventListener('click', e=>{
+  const dish = menu.find(m=>m.id===optDishId);
+  if(!dish) return;
+  const dec = e.target.closest('[data-sk-dec]');
+  const inc = e.target.closest('[data-sk-inc]');
+  const row = e.target.closest('.stk');
+  if(!row) return;
+  const i = +row.dataset.sk;
+  const name = dish.stacks[i].name;
+  const cur = stackSel.get(name) || 0;
+  let next = cur;
+  if(dec) next = cur - 1;
+  else if(inc || e.target === row || e.target.classList.contains('stk-name')) next = cur + 1;
+  if(next < 0) next = 0;
+  if(next === 0) stackSel.delete(name); else stackSel.set(name, next);
+  renderStackList();
+  syncOptPrice();
+});
+function closeOpt(){
+  $('#optModal').classList.remove('show');
+  optDishId = null;
+}
+// 弹窗里的实时单价与已选数量
+function syncOptPrice(){
+  const dish = menu.find(m=>m.id===optDishId);
+  if(!dish) return;
+  const picked = [...sauceSel].map(n=>(dish.sauces||[]).find(s=>s.name===n)).filter(Boolean);
+  const pickedCmts = [...commentSel].map(n=>(dish.comments||[]).find(c=>c.name===n)).filter(Boolean);
+  const pickedStks = [...stackSel].map(([n,cnt])=>{
+    const s = (dish.stacks||[]).find(x=>x.name===n);
+    return s ? {name:s.name, price:s.price, n:cnt} : null;
+  }).filter(Boolean);
+  const stackN = pickedStks.reduce((s,x)=>s+x.n, 0);
+  const unit = unitPrice(dish, picked, pickedCmts, pickedStks);
+  $('#optPrice').textContent = `${eu(unit)} · 已选 ${optSel.size + sauceSel.size + commentSel.size + stackN} 项`;
+}
+
+// 已选「需求」时：免费蘸料不可选，加价蘸料仍可选
+function refreshSauceLock(){
+  const dish = menu.find(m=>m.id===optDishId);
+  if(!dish) return;
+  const locked = optSel.size > 0;
+  $('#sauceList').querySelectorAll('.opt').forEach(b=>{
+    const s = dish.sauces[+b.dataset.si];
+    const free = s.price <= 0;
+    if(locked && free){
+      b.classList.add('disabled');
+      if(sauceSel.has(s.name)){
+        sauceSel.delete(s.name);
+        b.classList.remove('on');
+      }
+    } else {
+      b.classList.remove('disabled');
+    }
+  });
+  $('#sauceTip').textContent = locked ? '（已选需求，仅可选加价蘸料）' : '';
+  syncOptPrice();
+}
+
+$('#optList').addEventListener('click', e=>{
+  const b = e.target.closest('.opt');
+  if(!b) return;
+  const name = menu.find(m=>m.id===optDishId).opts[+b.dataset.oi];
+  const wasOn = optSel.has(name);
+  // 需求只能选一个：先清空全部，再选中当前项（再次点击可取消）
+  optSel.clear();
+  $('#optList').querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));
+  if(!wasOn){ optSel.add(name); b.classList.add('on'); }
+  refreshSauceLock();
+});
+
+$('#sauceList').addEventListener('click', e=>{
+  const b = e.target.closest('.opt');
+  if(!b || b.classList.contains('disabled')) return;
+  const name = menu.find(m=>m.id===optDishId).sauces[+b.dataset.si].name;
+  if(sauceSel.has(name)){ sauceSel.delete(name); b.classList.remove('on'); }
+  else { sauceSel.add(name); b.classList.add('on'); }
+  syncOptPrice();
+});
+
+$('#commentList').addEventListener('click', e=>{
+  const b = e.target.closest('.opt');
+  if(!b) return;
+  const name = menu.find(m=>m.id===optDishId).comments[+b.dataset.ci].name;
+  if(commentSel.has(name)){ commentSel.delete(name); b.classList.remove('on'); }
+  else { commentSel.add(name); b.classList.add('on'); }
+  syncOptPrice();
+});
+
+$('#optAdd').addEventListener('click', ()=>{
+  if(!optDishId) return;
+  const dish = menu.find(m=>m.id===optDishId);
+  const opts = [...optSel];
+  // 蘸料/评论按菜品里设定的顺序显示（而非点选顺序）
+  const sauces = (dish.sauces||[])
+    .filter(s=>sauceSel.has(s.name))
+    .map(s=>({name:s.name, price:s.price}));
+  const comments = (dish.comments||[])
+    .filter(c=>commentSel.has(c.name))
+    .map(c=>({name:c.name, price:c.price}));
+  const stacks = (dish.stacks||[])
+    .filter(s=>stackSel.has(s.name))
+    .map(s=>({name:s.name, price:s.price, n:stackSel.get(s.name)||1}));
+  const unit = unitPrice(dish, sauces, comments, stacks);
+  const note = $('#optNote').value.trim();
+  addItem(optDishId, opts, sauces, comments, stacks, note);
+  flashCard(optDishId);
+  closeOpt();
+  const parts = [dish.name];
+  if(opts.length) parts.push(opts.join('、'));
+  if(sauces.length) parts.push(`蘸料:${sauceText(sauces)}`);
+  if(comments.length) parts.push(`评论:${sauceText(comments)}`);
+  if(stacks.length) parts.push(`叠加:${stackText(stacks)}`);
+  if(note) parts.push(`备注:${note}`);
+  showToast('🛒', '已加入订单', `${parts.join(' · ')} · ${eu(unit)}`);
+});
+
+$('#optCancel').addEventListener('click', closeOpt);
+$('#optModal').addEventListener('click', e=>{ if(e.target.id==='optModal') closeOpt(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && optDishId) closeOpt(); });
+
+// 页面切换
+function switchView(name){
+  if(name === 'users' && !isAdmin()) return;   // 用户管理仅管理员可进入
+  document.querySelectorAll('.nav-btn').forEach(b=>
+    b.classList.toggle('active', b.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v=>
+    v.classList.toggle('active', v.id==='view-'+name));
+  window.scrollTo(0,0);
+}
+document.querySelector('.nav').addEventListener('click', e=>{
+  const b = e.target.closest('.nav-btn');
+  if(!b) return;
+  switchView(b.dataset.view);
+  if(b.dataset.view === 'users') renderUsers();
+});
+
+// 删除菜品
+function removeDish(id){
+  const dish = menu.find(m=>m.id===id);
+  if(!dish) return;
+  menu = menu.filter(m=>m.id!==id);
+  cart = cart.filter(l=>l.id!==id);
+  saveMenu(); save();
+  if(!getCats().includes(activeCat)) activeCat = '全部';
+  renderCats(); renderMenu(); renderOrder(); renderAdmin();
+  if(editingId === id) resetForm();
+  showToast('🗑️', dish.divider ? '已删除分割线' : '已删除菜品', dish.divider ? '' : dish.name);
+}
+
+// ===== 分类定制 =====
+let catEditing = null;   // 正在改名的分类下标
+
+function renderCatRows(){
+  $('#catRows').innerHTML = cats.map((c,i)=>{
+    if(catEditing === i){
+      return `<div class="crow">
+        <input class="cinput" id="catEditInput" type="text" maxlength="8">
+        <button class="csave" data-ok="${i}" title="保存">✓</button>
+        <button data-cancel="1" title="取消">✕</button>
+      </div>`;
+    }
+    const n = menu.filter(m=>m.cat===c && !m.divider).length;
+    return `<div class="crow">
+      <span class="cname">${c}</span>
+      <span class="ccount">${n}</span>
+      <button data-cup="${i}" ${i===0?'disabled':''} title="上移">↑</button>
+      <button data-cdown="${i}" ${i===cats.length-1?'disabled':''} title="下移">↓</button>
+      <button data-cedit="${i}" title="改名">改名</button>
+      <button class="cdel" data-cdel="${i}" title="删除">删除</button>
+    </div>`;
+  }).join('') || `<div style="font-size:13px;color:var(--sub);font-weight:600;padding:6px 0">还没有分类</div>`;
+  // 回到改名状态时自动聚焦并选中
+  if(catEditing !== null){
+    const inp = $('#catEditInput');
+    if(inp){ inp.value = cats[catEditing]; inp.focus(); inp.select(); }
+  }
+}
+
+function addCat(){
+  const name = $('#newCat').value.trim();
+  if(!name){ showToast('⚠️','请输入分类名称',''); $('#newCat').focus(); return; }
+  if(allCats().includes(name)){ showToast('⚠️','该分类已存在', name); return; }
+  cats.push(name);
+  saveCats();
+  $('#newCat').value = '';
+  renderCats(); renderMenu(); renderAdmin();
+  showToast('✅','已添加分类', name);
+}
+
+function saveCatRename(i){
+  const name = $('#catEditInput').value.trim();
+  const old = cats[i];
+  if(!name){ showToast('⚠️','分类名称不能为空',''); return; }
+  if(name !== old && allCats().includes(name)){ showToast('⚠️','该分类已存在', name); return; }
+  cats[i] = name;
+  menu.forEach(m=>{ if(m.cat===old) m.cat = name; });
+  catEditing = null;
+  saveCats(); saveMenu();
+  if(activeCat === old) activeCat = name;
+  renderCats(); renderMenu(); renderOrder(); renderAdmin();
+  showToast('💾','已重命名分类', `${old} → ${name}`);
+}
+
+function delCat(i){
+  const name = cats[i];
+  const moving = menu.filter(m=>m.cat===name && !m.divider).length;
+  cats.splice(i,1);
+  // 该分类下还有内容（含分割线）就一并移到「其他」
+  if(menu.some(m=>m.cat===name)){
+    if(!cats.includes('其他')) cats.push('其他');
+    menu.forEach(m=>{ if(m.cat===name) m.cat = '其他'; });
+  }
+  catEditing = null;
+  saveCats(); saveMenu();
+  if(activeCat === name) activeCat = '全部';
+  renderCats(); renderMenu(); renderOrder(); renderAdmin();
+  showToast('🗑️','已删除分类', moving ? `${name} · ${moving} 个菜品移到「其他」` : name);
+}
+
+function moveCat(i, dir){
+  const j = i + dir;
+  if(j < 0 || j >= cats.length) return;
+  [cats[i], cats[j]] = [cats[j], cats[i]];
+  if(catEditing === i) catEditing = j;
+  else if(catEditing === j) catEditing = i;
+  saveCats();
+  renderCats(); renderMenu(); renderAdmin();
+}
+
+$('#addCat').addEventListener('click', addCat);
+$('#newCat').addEventListener('keydown', e=>{ if(e.key==='Enter') addCat(); });
+
+$('#catRows').addEventListener('click', e=>{
+  const t = e.target.closest('button');
+  if(!t) return;
+  if(t.dataset.cup !== undefined){ catEditing = null; moveCat(+t.dataset.cup, -1); return; }
+  if(t.dataset.cdown !== undefined){ catEditing = null; moveCat(+t.dataset.cdown, 1); return; }
+  if(t.dataset.cedit !== undefined){ catEditing = +t.dataset.cedit; renderCatRows(); return; }
+  if(t.dataset.cdel !== undefined){ delCat(+t.dataset.cdel); return; }
+  if(t.dataset.ok !== undefined){ saveCatRename(+t.dataset.ok); return; }
+  if(t.dataset.cancel !== undefined){ catEditing = null; renderCatRows(); }
+});
+
+$('#catRows').addEventListener('keydown', e=>{
+  if(catEditing === null) return;
+  if(e.key === 'Enter') saveCatRename(catEditing);
+  if(e.key === 'Escape'){ catEditing = null; renderCatRows(); }
+});
+
+// 渲染菜品管理列表（按分类分组）
+function renderAdmin(){
+  $('#adminTip').textContent = `全部菜品 · 共 ${menu.filter(i=>!i.divider).length} 个`;
+  renderCatRows();
+  if(!menu.length){
+    $('#adminList').innerHTML = `<div class="admin-empty"><div class="big">🍽️</div><div>还没有菜品</div><div style="font-size:12px">在左侧填写并添加</div></div>`;
+    return;
+  }
+  $('#adminList').innerHTML = allCats().map(c=>{
+    const items = menu.filter(i=>i.cat===c);
+    const rows = items.map((i,idx)=>{
+      const up = `<button class="amove" data-up="${i.id}" ${idx===0?'disabled':''} title="上移">↑</button>`;
+      const down = `<button class="amove" data-down="${i.id}" ${idx===items.length-1?'disabled':''} title="下移">↓</button>`;
+      // 分割线行
+      if(i.divider){
+        return `<div class="arow divider-row">
+          <span class="aemoji">—</span>
+          <div class="ainfo"><div class="aname">分割线</div></div>
+          <span class="aprice"></span>
+          ${up}${down}
+          <button class="adel" data-del="${i.id}">删除</button>
+        </div>`;
+      }
+      return `<div class="arow ${i.id===editingId?'editing':''} ${i.off?'off':''}">
+        <span class="aemoji">${i.emoji}</span>
+        <div class="ainfo">
+          <div class="aname">${i.name}${i.off?'<span class="aoff">已下架</span>':''}</div>
+          <div class="adesc">${i.desc||'—'}</div>
+          ${i.opts&&i.opts.length?`<div class="aopts">可选：${i.opts.join(' / ')}</div>`:''}
+          ${i.sauces&&i.sauces.length?`<div class="asauce">蘸料：${sauceText(i.sauces)}</div>`:''}
+          ${i.comments&&i.comments.length?`<div class="acmt">评论：${sauceText(i.comments)}</div>`:''}
+          ${i.stacks&&i.stacks.length?`<div class="astack">可叠加：${stackText(i.stacks)}</div>`:''}
+        </div>
+        <span class="aprice">${eu(i.price)}</span>
+        <button class="asw ${i.off?'':'on'}" data-toggle="${i.id}" title="${i.off?'点击上架':'点击下架'}"><span class="knob"></span></button>
+        ${up}${down}
+        <button class="adiv" data-div="${i.id}" title="在此菜品下方插入分割线">分割线</button>
+        <button class="aedit" data-edit="${i.id}">编辑</button>
+        <button class="adel" data-del="${i.id}">删除</button>
+      </div>`;
+    }).join('');
+    const n = items.filter(i=>!i.divider).length;
+    return `<div class="group-title">${c} · ${n}</div>${rows}`;
+  }).join('');
+}
+
+$('#adminList').addEventListener('click', e=>{
+  const up = e.target.closest('[data-up]');
+  if(up){ moveDish(up.dataset.up, -1); return; }
+  const down = e.target.closest('[data-down]');
+  if(down){ moveDish(down.dataset.down, 1); return; }
+  const div = e.target.closest('[data-div]');
+  if(div){ insertDivider(div.dataset.div); return; }
+  const tg = e.target.closest('[data-toggle]');
+  if(tg){ toggleDish(tg.dataset.toggle); return; }
+  const edit = e.target.closest('[data-edit]');
+  if(edit){ startEdit(edit.dataset.edit); return; }
+  const del = e.target.closest('[data-del]');
+  if(del) removeDish(del.dataset.del);
+});
+
+// 在某菜品下方插入一条分割线（可在管理中继续上下移动）
+function insertDivider(afterId){
+  const pos = menu.findIndex(m=>m.id===afterId);
+  if(pos < 0) return;
+  const d = {id:'div_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+             divider:true, cat:menu[pos].cat};
+  menu.splice(pos+1, 0, d);
+  saveMenu();
+  renderMenu(); renderAdmin();
+  showToast('➖','已插入分割线','用 ↑ ↓ 调整它的位置');
+}
+
+// 上架 / 下架菜品（下架后点单页不再显示）
+function toggleDish(id){
+  const d = menu.find(m=>m.id===id);
+  if(!d) return;
+  d.off = !d.off;
+  saveMenu();
+  renderCats(); renderMenu(); renderAdmin();
+  showToast(d.off?'🚫':'✅', d.off?`已下架「${d.name}」`:`已上架「${d.name}」`,
+            d.off?'点单页不再显示':'已恢复显示');
+}
+
+// 调整菜品顺序（在同分类内上移/下移）
+function moveDish(id, dir){
+  const i = menu.findIndex(m=>m.id===id);
+  if(i < 0) return;
+  const cat = menu[i].cat;
+  let j = -1;
+  for(let k = i + dir; k >= 0 && k < menu.length; k += dir){
+    if(menu[k].cat === cat){ j = k; break; }
+  }
+  if(j < 0) return;
+  [menu[i], menu[j]] = [menu[j], menu[i]];
+  saveMenu();
+  renderMenu(); renderAdmin();
+}
+
+// 编辑菜品：把数据填进表单
+let editingId = null;
+function startEdit(id){
+  const dish = menu.find(m=>m.id===id);
+  if(!dish) return;
+  editingId = id;
+  $('#fName').value = dish.name;
+  $('#fPrice').value = dish.price;
+  $('#fEmoji').value = dish.emoji;
+  $('#fCatNew').value = '';
+  syncCatField(dish.cat);
+  $('#fDesc').value = dish.desc || '';
+  $('#fOpts').value = (dish.opts || []).join(', ');
+  $('#fSauces').value = saucesToText(dish.sauces);
+  $('#fComments').value = saucesToText(dish.comments);
+  $('#fStacks').value = saucesToText(dish.stacks);
+  renderPairOrder('#fSauces', '#sauceOrder');
+  renderPairOrder('#fComments', '#commentOrder');
+  renderPairOrder('#fStacks', '#stackOrder');
+  $('#formTitle').textContent = '修改菜品';
+  $('#saveDish').textContent = '保存修改';
+  $('#cancelEdit').style.display = 'block';
+  renderAdmin();
+  $('#fName').focus();
+}
+
+function resetForm(){
+  editingId = null;
+  $('#fName').value = ''; $('#fPrice').value = ''; $('#fEmoji').value = ''; $('#fDesc').value = ''; $('#fOpts').value = ''; $('#fSauces').value = ''; $('#fComments').value = ''; $('#fStacks').value = '';
+  $('#fCatNew').value = '';
+  syncCatField(activeCat==='全部' ? allCats()[0] : activeCat);
+  renderPairOrder('#fSauces', '#sauceOrder');
+  renderPairOrder('#fComments', '#commentOrder');
+  renderPairOrder('#fStacks', '#stackOrder');
+  $('#formTitle').textContent = '新增菜品';
+  $('#saveDish').textContent = '＋ 添加菜品';
+  $('#cancelEdit').style.display = 'none';
+  renderAdmin();
+}
+
+$('#cancelEdit').addEventListener('click', resetForm);
+
+// 分类下拉：选中已有分类；没有可选分类时落到「新分类」
+function syncCatField(cat){
+  const sel = $('#fCat');
+  const has = !!cat && [...sel.options].some(o=>o.value===cat);
+  sel.value = has ? cat : '__new__';
+  $('#fCatNew').style.display = has ? 'none' : 'block';
+}
+$('#fCat').addEventListener('change', ()=>{
+  const isNew = $('#fCat').value === '__new__';
+  $('#fCatNew').style.display = isNew ? 'block' : 'none';
+  if(isNew) $('#fCatNew').focus();
+});
+
+// 蘸料：「名称」或「名称+加价」，如 芝士+1；逗号分隔，名字可带空格
+function parseSauces(str){
+  return str.split(/[,，、;；]+/).map(s=>s.trim()).filter(Boolean).map(t=>{
+    const m = t.match(/^(.*?)\s*\+\s*(\d+(?:\.\d+)?)$/);
+    if(m && m[1].trim()) return {name:m[1].trim(), price:parseFloat(m[2])};
+    return {name:t, price:0};
+  }).filter(s=>s.name).map(s=>({name:s.name, price: s.price>0 ? s.price : 0}));
+}
+function saucesToText(list){
+  return (list||[]).map(s=>s.price>0 ? `${s.name}+${s.price}` : s.name).join(', ');
+}
+// 「名称/名称+加价」列表的顺序编辑（蘸料、评论共用；顺带就是文本输入框的可视化，两者始终同步）
+function renderPairOrder(inputSel, boxSel){
+  const list = parseSauces($(inputSel).value);
+  $(boxSel).innerHTML = list.length < 2 ? '' : list.map((s,i)=>`
+    <div class="sorow">
+      <span class="sname">${s.name}</span>
+      ${s.price>0?`<span class="sprice">+${eu(s.price)}</span>`:''}
+      <button data-pup="${i}" ${i===0?'disabled':''} title="上移">↑</button>
+      <button data-pdown="${i}" ${i===list.length-1?'disabled':''} title="下移">↓</button>
+    </div>`).join('');
+}
+function bindPairOrder(inputSel, boxSel){
+  $(inputSel).addEventListener('input', ()=>renderPairOrder(inputSel, boxSel));
+  $(boxSel).addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b) return;
+    const list = parseSauces($(inputSel).value);
+    let i = -1, dir = 0;
+    if(b.dataset.pup !== undefined){ i = +b.dataset.pup; dir = -1; }
+    else if(b.dataset.pdown !== undefined){ i = +b.dataset.pdown; dir = 1; }
+    if(i < 0) return;
+    const j = i + dir;
+    if(j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    $(inputSel).value = saucesToText(list);
+    renderPairOrder(inputSel, boxSel);
+  });
+}
+bindPairOrder('#fSauces', '#sauceOrder');
+bindPairOrder('#fComments', '#commentOrder');
+bindPairOrder('#fStacks', '#stackOrder');
+
+$('#saveDish').addEventListener('click', ()=>{
+  const name = $('#fName').value.trim();
+  const price = parseFloat($('#fPrice').value);
+  const newCat = $('#fCat').value === '__new__';
+  const cat = (newCat ? $('#fCatNew').value.trim() : $('#fCat').value) || '其他';
+  const emoji = $('#fEmoji').value.trim() || '🍽️';
+  const desc = $('#fDesc').value.trim();
+  // 选项/蘸料/评论用逗号分隔（不按空格拆，名字里可以带空格）
+  const opts = $('#fOpts').value.split(/[,，、;；]+/).map(s=>s.trim()).filter(Boolean);
+  const sauces = parseSauces($('#fSauces').value);
+  const comments = parseSauces($('#fComments').value);
+  const stacks = parseSauces($('#fStacks').value);
+
+  if(!name){ showToast('⚠️','请填写菜品名称',''); $('#fName').focus(); return; }
+  if(!(price>=0)){ showToast('⚠️','请填写正确价格',''); $('#fPrice').focus(); return; }
+  if(newCat && !$('#fCatNew').value.trim()){ showToast('⚠️','请填写新分类名称',''); $('#fCatNew').focus(); return; }
+  ensureCat(cat);   // 用了新分类名就自动登记为分类
+
+  if(editingId){
+    const dish = menu.find(m=>m.id===editingId);
+    if(!dish) return;
+    const sig = d => (d.opts||[]).join('\u0001') + '\u0002' + (d.sauces||[]).map(s=>`${s.name}+${s.price}`).join('\u0001')
+      + '\u0003' + (d.comments||[]).map(c=>`${c.name}+${c.price}`).join('\u0001')
+      + '\u0004' + (d.stacks||[]).map(c=>`${c.name}+${c.price}`).join('\u0001');
+    const changed = sig(dish) !== sig({opts, sauces, comments, stacks});
+    Object.assign(dish, {name, price, cat, emoji, desc, opts, sauces, comments, stacks});
+    // 选项/蘸料/评论变了，购物车里旧的行作废
+    if(changed) cart = cart.filter(l=>l.id!==editingId);
+    saveMenu(); save();
+    if(!getCats().includes(activeCat)) activeCat = '全部';
+    renderCats(); renderMenu(); renderOrder(); renderAdmin();
+    resetForm();
+    showToast('💾', '已保存修改', `${emoji} ${name} · ${eu(price)}`);
+    return;
+  }
+
+  const id = 'x' + Date.now().toString(36);
+  menu.push({id, name, desc, price, emoji, cat, opts, sauces, comments, stacks});
+  saveMenu();
+  activeCat = '全部';
+  renderCats(); renderMenu(); renderAdmin();
+  resetForm();
+  showToast('✅', '已添加菜品', `${emoji} ${name} · ${eu(price)}`);
+});
+
+// 通用提示
+let toastTimer;
+function showToast(ico, title, sub){
+  $('#toastIco').textContent = ico;
+  $('#toastTitle').textContent = title;
+  $('#toastSub').textContent = sub || '';
+  const toast = $('#toast');
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
+}
+
+function flashCard(id){
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  if(card){ card.style.borderColor='var(--accent)'; card.style.transform='scale(.97)';
+    setTimeout(()=>{ card.style.borderColor=''; card.style.transform=''; },150); }
+}
+
+$('#lines').addEventListener('click', e=>{
+  const inc = e.target.closest('[data-inc]');
+  const dec = e.target.closest('[data-dec]');
+  if(inc) changeLineQty(+inc.dataset.inc, 1);
+  if(dec) changeLineQty(+dec.dataset.dec, -1);
+});
+
+// 数量可手动输入：只允许数字，失焦/回车时生效
+$('#lines').addEventListener('input', e=>{
+  const inp = e.target.closest('[data-qty]');
+  if(inp) inp.value = inp.value.replace(/[^\d]/g, '').slice(0, 3);
+});
+$('#lines').addEventListener('change', e=>{
+  const inp = e.target.closest('[data-qty]');
+  if(inp) setLineQty(+inp.dataset.qty, inp.value);
+});
+$('#lines').addEventListener('keydown', e=>{
+  if(!e.target.closest('[data-qty]')) return;
+  if(e.key === 'Enter') e.target.blur();        // 回车 = 生效
+  if(e.key === 'Escape') renderOrder();          // Esc = 放弃
+});
+
+$('#clearBtn').addEventListener('click', ()=>{
+  if(!cart.length && editingOrderNo == null) return;
+  cart = []; editingOrderNo = null; save(); renderMenu(); renderOrder();
+});
+
+// 切换「待处理 / 已完成」
+$('#htabs').addEventListener('click', e=>{
+  const b = e.target.closest('.htab');
+  if(!b) return;
+  historyTab = b.dataset.tab;
+  renderHistory();
+});
+
+// 点订单卡片 → 待处理 ↔ 已完成 互相切换（点错可点回来）
+$('#history').addEventListener('click', e=>{
+  const editBtn = e.target.closest('[data-edit]');
+  if(editBtn){ editOrder(editBtn.dataset.edit); return; }   // 「修改」不触发完成/退回切换
+  const card = e.target.closest('.hitem[data-no]');
+  if(!card) return;
+  const o = orders.find(x=>String(x.no)===card.dataset.no);
+  if(!o) return;
+  o.done = !o.done;
+  // 完成：记下点击完成的先后；退回：记下退回的先后（回到待处理时置顶）
+  if(o.done){ o.doneAt = nextClickAt(); delete o.backAt; }
+  else { delete o.doneAt; o.backAt = nextClickAt(); }
+  saveOrders(); renderHistory();
+  showToast(o.done?'✅':'↩️', o.done?'订单已完成':'已退回待处理',
+    `单号 ${o.no} 已移到「${o.done?'已完成':'待处理'}」`);
+});
+
+// 把待处理订单重新载入点单购物车进行修改（改完点「保存修改」替换原单）
+function editOrder(no){
+  const o = orders.find(x=>String(x.no)===String(no));
+  if(!o || o.done) return;
+  if(cart.length && !confirm(`点单里已有 ${cart.length} 行，载入订单 #${o.no} 会覆盖当前点单，继续吗？`)) return;
+  cart = o.items.map(it=>{
+    const d = menu.find(m=>!m.divider && (m.id===it.id || m.name===it.name));
+    return {
+      id: d ? d.id : it.id,               // 旧订单可能没有 id，按菜名找回当前菜品
+      name: it.name || (d ? d.name : ''), // 保留菜名，菜单找不到时仍可按名匹配
+      opts: [...(it.opts||[])],
+      sauces: (it.sauces||[]).map(s=>({name:s.name, price:Number(s.price)||0})),
+      comments: (it.comments||[]).map(c=>({name:c.name, price:Number(c.price)||0})),
+      stacks: (it.stacks||[]).map(s=>({name:s.name, price:Number(s.price)||0, n:Number(s.n)||1})),
+      note: it.note || '',
+      qty: it.q || 1
+    };
+  });
+  editingOrderNo = o.no;
+  save(); renderMenu(); renderOrder();
+  switchView('order');
+  showToast('✏️', '已载入到点单', `订单 #${o.no}，改好后点「保存修改」`);
+}
+
+// 取消修改：丢弃载入的内容，原订单保持不变
+$('#editCancel').addEventListener('click', ()=>{
+  if(editingOrderNo == null) return;
+  const no = editingOrderNo;
+  editingOrderNo = null;
+  cart = []; save(); renderMenu(); renderOrder();
+  showToast('↩️', '已取消修改', `订单 #${no} 保持不变`);
+});
+
+// 清空：清空当前标签页的订单
+$('#clearHistory').addEventListener('click', ()=>{
+  if(!orders.length) return;
+  orders = historyTab==='done' ? orders.filter(o=>!o.done) : orders.filter(o=>o.done);
+  saveOrders(); renderHistory();
+});
+
+// 提交
+$('#submitBtn').addEventListener('click', ()=>{
+  if(!cart.length) return;
+  let t = 0, n = 0;
+  const items = [];
+  const missing = [];
+  cart.forEach(l=>{
+    const m = dishOfLine(l);
+    if(!m){ missing.push(l.name || '（已下架菜品）'); return; }
+    const unit = unitPrice(m, l.sauces, l.comments, l.stacks);
+    t += unit * l.qty;
+    n += l.qty;
+    items.push({id:m.id, name:m.name, desc:m.desc, q:l.qty, unit, opts:[...l.opts], sauces:orderSauces(m, l.sauces), comments:orderComments(m, l.comments), stacks:orderStacks(m, l.stacks), note:l.note||''});
+  });
+  if(!items.length){
+    if(missing.length) showToast('⚠️', '无法提交', '菜单里找不到：' + missing.join('、'));
+    return;
+  }
+  if(missing.length) showToast('⚠️', '部分菜品已跳过', '菜单里找不到：' + missing.join('、'));
+  const d = new Date();
+  const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+
+  if(editingOrderNo != null){
+    // 修改模式：替换原待处理订单（保留单号与排序位置）
+    const o = orders.find(x=>String(x.no)===String(editingOrderNo));
+    if(o){ o.items = items; o.count = n; o.total = t; o.time = time; delete o.doneAt; delete o.backAt; }
+    const no = editingOrderNo;
+    editingOrderNo = null;
+    saveOrders(); renderHistory();
+    showToast('✅', '修改已保存', `${n} 件 · ${eu(t)} · 单号 ${no}`);
+  } else {
+    // 订单号从 1 开始递增（清空已提交订单后重新从 1 开始）
+    const no = orders.reduce((mx,o)=>Math.max(mx, Number(o.no)||0), 0) + 1;
+    orders.unshift({no, time, items, count:n, total:t});   // 新单排到待处理末尾
+    saveOrders(); renderHistory();
+    showToast('✅', '下单成功', `${n} 件 · ${eu(t)} · 单号 ${no}`);
+  }
+  cart = []; save(); renderMenu(); renderOrder();
+});
+
+// ===== 登录 / 注册 / 权限 =====
+
+// 用户管理页内容
+function renderUsers(){
+  if(!isAdmin()) return;
+  const pend = users.filter(u=>u.status==='pending');
+  const pc = $('#pendCount'), ac = $('#allCount');
+  if(pc) pc.textContent = pend.length;
+  if(ac) ac.textContent = users.length;
+
+  $('#pendingUsers').innerHTML = pend.length ? pend.map(u=>`
+    <div class="urow pend">
+      <span class="uname">${u.u}</span>
+      <span class="ust pending">待审核</span>
+      <button class="btn-ok" data-ok="${u.u}">同意</button>
+      <button class="clear" data-rm="${u.u}">拒绝</button>
+    </div>`).join('') : `<div class="uempty">暂无待审核的注册</div>`;
+
+  $('#allUsers').innerHTML = users.map(u=>{
+    const tag = u.role==='admin' ? '<span class="ust adm">管理员</span>'
+              : u.status==='active' ? '<span class="ust active">正常</span>'
+              : '<span class="ust pending">待审核</span>';
+    const op = u.u===currentUser.u ? '<span class="you">当前账号</span>'
+             : `<button class="clear" data-rm="${u.u}">删除</button>`;
+    return `<div class="urow"><span class="uname">${u.u}</span>${tag}${op}</div>`;
+  }).join('') || `<div class="uempty">暂无用户</div>`;
+}
+
+// 按当前身份刷新界面
+function applyAuth(){
+  const logged = !!currentUser;
+  document.body.classList.toggle('auth-locked', !logged);
+  if(!logged) return;
+  $('#whoami').textContent = currentUser.u;
+  const role = $('#whoRole');
+  role.textContent = isAdmin() ? '管理员' : '普通用户';
+  role.classList.toggle('user', !isAdmin());
+  $('#navUsers').style.display = isAdmin() ? '' : 'none';
+  // 普通用户不能清空 / 删除订单
+  $('#clearBtn').style.display = isAdmin() ? '' : 'none';
+  $('#clearHistory').style.display = isAdmin() ? '' : 'none';
+  renderUsers();
+}
+
+// 登录 / 注册 表单切换
+function showForm(isRegister){
+  $('#loginForm').style.display = isRegister ? 'none' : '';
+  $('#registerForm').style.display = isRegister ? '' : 'none';
+  $('#loginSub').textContent = isRegister ? '注册后需管理员同意才能登录' : '请登录后使用';
+  $('#lgMsg').textContent = ''; $('#rgMsg').textContent = '';
+}
+$('#toRegister').addEventListener('click', ()=>showForm(true));
+$('#toLogin').addEventListener('click', ()=>showForm(false));
+
+// 登录
+function doLogin(){
+  const u = $('#lgUser').value.trim(), p = $('#lgPass').value, msg = $('#lgMsg');
+  const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
+  if(!u || !p) return fail('请输入用户名和密码');
+  const user = findUser(u);
+  if(!user || user.p !== p) return fail('用户名或密码不正确');
+  if(user.status !== 'active') return fail('账号还在等待管理员同意，暂时不能登录');
+  currentUser = user;
+  localStorage.setItem(SESSION_KEY, u);
+  $('#lgPass').value = '';
+  msg.className = 'login-msg'; msg.textContent = '';
+  applyAuth();
+  switchView('order');
+  showToast('👋', '登录成功', (isAdmin() ? '管理员 · ' : '') + u);
+}
+$('#lgLogin').addEventListener('click', doLogin);
+['lgUser','lgPass'].forEach(id=>$('#'+id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); }));
+
+// 注册普通用户（提交后需管理员同意）
+$('#rgSubmit').addEventListener('click', ()=>{
+  const u = $('#rgUser').value.trim(), p = $('#rgPass').value, p2 = $('#rgPass2').value;
+  const msg = $('#rgMsg');
+  const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
+  if(u.length < 2) return fail('用户名至少 2 个字符');
+  if(p.length < 3) return fail('密码至少 3 位');
+  if(p !== p2) return fail('两次输入的密码不一样');
+  if(findUser(u)) return fail('这个用户名已经被注册了');
+  users.push({u, p, role:'user', status:'pending'});
+  saveUsers();
+  $('#rgUser').value = ''; $('#rgPass').value = ''; $('#rgPass2').value = '';
+  msg.className = 'login-msg ok';
+  msg.textContent = '已提交，等待管理员同意后即可登录';
+});
+
+// 用户管理：同意 / 拒绝 / 删除
+$('#view-users').addEventListener('click', e=>{
+  if(!isAdmin()) return;
+  const ok = e.target.closest('[data-ok]');
+  const rm = e.target.closest('[data-rm]');
+  if(ok){
+    const u = findUser(ok.dataset.ok);
+    if(!u) return;
+    u.status = 'active'; saveUsers(); renderUsers();
+    showToast('✅', '已同意', `${u.u} 现在可以登录了`);
+  }else if(rm){
+    const name = rm.dataset.rm;
+    if(name === currentUser.u) return;
+    const pending = (findUser(name) || {}).status === 'pending';
+    users = users.filter(x=>x.u !== name); saveUsers(); renderUsers();
+    showToast(pending ? '🚫' : '🗑️', pending ? '已拒绝' : '已删除用户', name);
+  }
+});
+
+// 修改自己的密码
+$('#pwSave').addEventListener('click', ()=>{
+  const o = $('#pwOld').value, n = $('#pwNew').value, msg = $('#pwMsg');
+  const fail = t => { msg.className = 'login-msg'; msg.textContent = t; };
+  if(o !== currentUser.p) return fail('原密码不正确');
+  if(n.length < 3) return fail('新密码至少 3 位');
+  currentUser.p = n; saveUsers();
+  $('#pwOld').value = ''; $('#pwNew').value = '';
+  msg.className = 'login-msg ok'; msg.textContent = '密码已更新';
+});
+
+// 退出登录
+$('#logoutBtn').addEventListener('click', ()=>{
+  currentUser = null;
+  localStorage.removeItem(SESSION_KEY);
+  $('#lgUser').value = ''; $('#lgPass').value = '';
+  showForm(false);
+  applyAuth();
+});
+
+// ===== 云端同步（Render Node 后端 + Upstash Redis）=====
+// 与后端同源部署时留空；本地前后端分开跑可改成 'http://localhost:3000'
+const API_BASE = '';
+let cloudOn = false;          // 是否已连上后端
+let cloudRev = -1;            // 已知的服务端版本号
+const COLLS = ['menu','cats','users','orders'];
+const dirty = {};             // 本地改了、待推送的集合
+const timers = {};            // 推送防抖定时器
+const snap = {};              // 上次与云端对齐的数据快照（JSON 字符串）
+
+function collData(name){
+  return name==='menu' ? menu : name==='cats' ? cats : name==='users' ? users : name==='orders' ? orders : null;
+}
+function setCloud(ok){
+  cloudOn = ok;
+  const b = document.getElementById('cloudBadge');
+  const t = document.getElementById('cloudText');
+  if(b){ b.classList.toggle('on', ok); b.classList.toggle('off', !ok); }
+  if(t) t.textContent = ok ? '云端已连接' : '离线（仅本机）';
+}
+// 本地改动后把对应集合推送到云端（防抖 350ms）
+function cloudPush(name){
+  if(!cloudOn) return;
+  dirty[name] = true;
+  clearTimeout(timers[name]);
+  timers[name] = setTimeout(()=>cloudFlush(name), 350);
+}
+async function cloudFlush(name){
+  if(!cloudOn || !dirty[name]) return;
+  const patch = {}; patch[name] = collData(name);
+  try{
+    const r = await fetch(API_BASE + '/api/state', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(patch)
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if(typeof j.rev === 'number') cloudRev = j.rev;
+    snap[name] = JSON.stringify(collData(name));
+    dirty[name] = false;
+    setCloud(true);
+  }catch(e){ setCloud(false); }
+}
+// 把云端数据应用到本机（只应用没在本地编辑、且确实变化的集合）
+function applyRemote(s){
+  let menuCh=false, catsCh=false, usersCh=false, ordersCh=false;
+  if(Array.isArray(s.cats) && !dirty.cats && JSON.stringify(s.cats)!==snap.cats){
+    cats = s.cats; snap.cats = JSON.stringify(cats); catsCh = true;
+  }
+  if(Array.isArray(s.menu) && !dirty.menu && editingId==null && JSON.stringify(s.menu)!==snap.menu){
+    menu = s.menu; snap.menu = JSON.stringify(menu); menuCh = true;
+  }
+  if(Array.isArray(s.users) && !dirty.users && JSON.stringify(s.users)!==snap.users){
+    users = s.users; snap.users = JSON.stringify(users); usersCh = true;
+    try{ localStorage.setItem(USER_KEY, JSON.stringify(users)); }catch(e){}
+    if(currentUser && !users.find(x=>x.u===currentUser.u && x.status==='active')){
+      currentUser = null; applyAuth();
+    }
+  }
+  if(Array.isArray(s.orders) && !dirty.orders && editingOrderNo==null && JSON.stringify(s.orders)!==snap.orders){
+    orders = s.orders; snap.orders = JSON.stringify(orders); ordersCh = true;
+  }
+  if(menuCh || catsCh){ renderCats(); renderMenu(); renderAdmin(); }
+  if(ordersCh){ renderHistory(); renderOrder(); }
+  if(usersCh && document.getElementById('view-users').classList.contains('active')) renderUsers();
+}
+async function cloudGet(){
+  const r = await fetch(API_BASE + '/api/state');
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+// 首次连接：云端为空就把本机现有数据上传（迁移），否则拉取云端数据
+async function cloudInit(){
+  try{
+    const s = await cloudGet();
+    setCloud(true);
+    if((Number(s.rev)||0) === 0){
+      const patch = {};
+      COLLS.forEach(c=>{ patch[c] = collData(c); });
+      const r = await fetch(API_BASE + '/api/state', {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(patch)
+      });
+      const j = await r.json();
+      if(typeof j.rev === 'number') cloudRev = j.rev;
+      COLLS.forEach(c=>{ snap[c] = JSON.stringify(collData(c)); dirty[c] = false; });
+      showToast('☁️', '已同步到云端', '本机数据已上传，其它设备可共享');
+    }else{
+      cloudRev = Number(s.rev) || 0;
+      applyRemote(s);
+    }
+  }catch(e){ setCloud(false); }
+}
+// 之后定时拉取，有更新就应用
+async function cloudPoll(){
+  if(document.hidden) return;
+  try{
+    const s = await cloudGet();
+    setCloud(true);
+    const rev = Number(s.rev) || 0;
+    if(rev === cloudRev) return;
+    cloudRev = rev;
+    applyRemote(s);
+  }catch(e){ setCloud(false); }
+}
+
+// 初始化
+saveUsers();
+currentUser = users.find(x=>x.u === localStorage.getItem(SESSION_KEY) && x.status==='active') || null;
+renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin();
+applyAuth();
+// 云端同步：首次拉取/迁移，之后每 3 秒拉一次（仅页面可见时）
+cloudInit();
+setInterval(cloudPoll, 3000);
+window.addEventListener('focus', cloudPoll);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloudPoll(); });
+</script>
+</body>
+</html>
