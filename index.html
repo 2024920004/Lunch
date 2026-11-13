@@ -9,6 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="小吃点单">
+<!-- PWA：可安装为 App -->
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <title>小吃点单</title>
 <style>
   :root{
@@ -2391,6 +2395,12 @@ cloudInit();
 setInterval(cloudPoll, 3000);
 window.addEventListener('focus', cloudPoll);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloudPoll(); });
+</script>
+<script>
+// PWA：注册 Service Worker，使页面可“安装”为 App（离线也能打开外壳）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>
