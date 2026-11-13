@@ -1677,7 +1677,13 @@ function renderOrder(){
 }
 
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(cart)); }
-function saveOrders(){ localStorage.setItem(ORDER_KEY, JSON.stringify(orders)); cloudPush('orders'); }
+function saveOrders(removed){
+  localStorage.setItem(ORDER_KEY, JSON.stringify(orders));
+  // 记录被删掉的订单（单号 + 原提交时间），云端据此做删除，合并时不会把删掉的又拉回来
+  if(Array.isArray(removed) && removed.length)
+    orderDelPending = orderDelPending.concat(removed.map(o=>({no:o.no, at:o.at})));
+  cloudPush('orders');
+}
 
 // 按行序号增减（订单列表里的 + / −）
 function changeLineQty(idx, delta){
@@ -2426,8 +2432,10 @@ $('#editCancel').addEventListener('click', ()=>{
 // 清空：清空当前标签页的订单
 $('#clearHistory').addEventListener('click', ()=>{
   if(!orders.length) return;
-  orders = historyTab==='done' ? orders.filter(o=>!o.done) : orders.filter(o=>o.done);
-  saveOrders(); renderHistory();
+  const keep = o => historyTab==='done' ? !o.done : o.done;
+  const removed = orders.filter(o=>!keep(o));
+  orders = orders.filter(keep);
+  saveOrders(removed); renderHistory();
 });
 
 // 提交：paid=true 表示「已付款下单」，下单时直接标记为已付款
@@ -2626,6 +2634,7 @@ const COLLS = ['menu','cats','users','orders'];
 const dirty = {};             // 本地改了、待推送的集合
 const timers = {};            // 推送防抖定时器
 const snap = {};              // 上次与云端对齐的数据快照（JSON 字符串）
+let orderDelPending = [];     // 待通知云端的「已删除订单」[{no, at}]（防止合并时把删掉的重又拉回来）
 
 function collData(name){
   return name==='menu' ? menu : name==='cats' ? cats : name==='users' ? users : name==='orders' ? orders : null;
@@ -2648,6 +2657,15 @@ function cloudPush(name){
 async function cloudFlush(name){
   if(!cloudOn || !dirty[name]) return;
   const patch = {}; patch[name] = collData(name);
+  // 订单：把「本次要删掉的单号」一起上报，云端会记入墓碑并做合并
+  let sentDel = [];
+  if(name === 'orders'){
+    sentDel = orderDelPending.filter(d=>{
+      const o = orders.find(x=>String(x.no)===String(d.no));
+      return !(o && (Number(o.at)||0) >= (Number(d.at)||0));   // 单号已被重新使用 → 不再上报删除
+    });
+    if(sentDel.length) patch.orderDel = sentDel;
+  }
   try{
     const r = await fetch(API_BASE + '/api/state', {
       method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(patch)
@@ -2655,6 +2673,19 @@ async function cloudFlush(name){
     if(!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     if(typeof j.rev === 'number') cloudRev = j.rev;
+    if(name === 'orders'){
+      if(sentDel.length){
+        const sentNos = new Set(sentDel.map(d=>String(d.no)));
+        orderDelPending = orderDelPending.filter(d=>!sentNos.has(String(d.no)));
+      }
+      // 服务端返回合并后的权威订单（含其它设备同时下的单），直接采用，避免各设备不一致
+      if(Array.isArray(j.orders)){
+        orders = j.orders;
+        snap.orders = JSON.stringify(orders);
+        try{ localStorage.setItem(ORDER_KEY, snap.orders); }catch(e){}
+        renderHistory(); renderOrder();
+      }
+    }
     snap[name] = JSON.stringify(collData(name));
     dirty[name] = false;
     setCloud(true);
@@ -2742,11 +2773,14 @@ async function importBackup(file){
     showToast('⚠️', tr('eBackupFormat'), tr('eChooseJson')); return;
   }
   if(!confirm(tr('cImportConfirm'))) return;
+  const oldOrders = orders;
   menu = data.menu;
   cats = Array.isArray(data.cats) && data.cats.length ? data.cats : cats;
   orders = Array.isArray(data.orders) ? data.orders : [];
   if(data.users.length) users = data.users;
-  saveMenu(); saveCats(); saveOrders(); saveUsers();
+  const keptNos = new Set(orders.map(o=>String(o.no)));
+  const removed = oldOrders.filter(o=>!keptNos.has(String(o.no)));   // 备份里没有的旧单 → 通知云端删除
+  saveMenu(); saveCats(); saveOrders(removed); saveUsers();
   renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin(); renderUsers();
   showToast('✅', tr('tBackupImported'), tr('backupSummary', menu.length, orders.length, users.length));
 }
