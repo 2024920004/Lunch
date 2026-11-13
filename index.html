@@ -311,6 +311,18 @@
     padding:16px;max-width:380px;
   }
   .um .pwbox .btn-primary{width:auto;padding:10px 20px;font-size:14px;margin-top:4px;}
+  .um .bakbox{
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:14px;display:flex;gap:8px;flex-wrap:wrap;max-width:560px;
+  }
+  .um .bak-btn{
+    flex:1;min-width:130px;padding:11px;border-radius:10px;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:800;
+    border:1px solid var(--line);background:#fff;color:var(--text);
+  }
+  .um .bak-btn.primary{border:none;background:var(--accent);color:#fff;}
+  .um .bak-btn:active{filter:brightness(.95);}
+  .um .bak-tip{flex-basis:100%;font-size:12px;color:var(--sub);font-weight:600;line-height:1.5;}
 
   /* 表单元素（菜品管理页） */
   .field{margin-bottom:12px;}
@@ -885,6 +897,14 @@
       </div>
       <button class="btn-primary" id="pwSave">保存新密码</button>
       <div class="login-msg" id="pwMsg"></div>
+    </div>
+
+    <div class="uhead"><h2>数据备份</h2></div>
+    <div class="bakbox">
+      <button class="bak-btn primary" id="bakExport">导出备份</button>
+      <button class="bak-btn" id="bakImport">导入备份</button>
+      <input type="file" id="bakFile" accept=".json,application/json" style="display:none">
+      <div class="bak-tip">备份包含菜品、分类、订单、用户。换地址/换设备时用它迁移；导入会覆盖当前数据。</div>
     </div>
   </div>
 </div>
@@ -2291,6 +2311,42 @@ async function cloudPoll(){
     applyRemote(s);
   }catch(e){ setCloud(false); }
 }
+
+// ===== 数据备份：导出 / 导入 =====
+function exportBackup(){
+  const data = { _type:'snack-backup', _at:new Date().toISOString(), menu, cats, users, orders };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `snack-backup-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  showToast('📦', '备份已导出', '已保存到「下载」文件夹');
+}
+async function importBackup(file){
+  let data;
+  try{ data = JSON.parse(await file.text()); }
+  catch(e){ showToast('⚠️', '备份文件无法解析', '请选择本系统导出的 .json 文件'); return; }
+  if(!data || !Array.isArray(data.menu) || !Array.isArray(data.users)){
+    showToast('⚠️', '备份文件格式不对', '请选择本系统导出的 .json 文件'); return;
+  }
+  if(!confirm('导入会覆盖当前的菜品、分类、订单和用户，确定继续吗？')) return;
+  menu = data.menu;
+  cats = Array.isArray(data.cats) && data.cats.length ? data.cats : cats;
+  orders = Array.isArray(data.orders) ? data.orders : [];
+  if(data.users.length) users = data.users;
+  saveMenu(); saveCats(); saveOrders(); saveUsers();
+  renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin(); renderUsers();
+  showToast('✅', '备份已导入', `菜品 ${menu.length} · 订单 ${orders.length} · 用户 ${users.length}`);
+}
+$('#bakExport').addEventListener('click', exportBackup);
+$('#bakImport').addEventListener('click', ()=>$('#bakFile').click());
+$('#bakFile').addEventListener('change', e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(f) importBackup(f);
+});
 
 // 初始化
 saveUsers();
