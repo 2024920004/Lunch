@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beleg / plain</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --line:#e3e5e9; --txt:#1c1e21;
+    --sub:#6b7280; --accent:#ff6b35; --accent-soft:#fff1eb;
+    --green:#16a34a; --red:#e5484d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--txt); min-height:100vh;
+  }
+  header{
+    position:sticky; top:0; z-index:10; background:#fff;
+    border-bottom:1px solid var(--line); padding:12px 16px;
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  header h1{font-size:17px; font-weight:800; margin:0; letter-spacing:.3px;}
+  header h1 span{color:var(--accent);}
+  .spacer{flex:1;}
+  .stat{font-size:13px; color:var(--sub); font-weight:700;}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--sub); margin-right:5px; vertical-align:1px;}
+  .dot.ok{background:var(--green);} .dot.err{background:var(--red);} .dot.warn{background:#f59e0b;}
+  .toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+  .toggle button{
+    border:0; background:#fff; padding:7px 14px; font-size:13px; font-weight:800;
+    color:var(--sub); cursor:pointer; font-family:inherit;
+  }
+  .toggle button.active{background:var(--accent); color:#fff;}
+  main{padding:16px;}
+  .grid{display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(270px,1fr));}
+  .ocard{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; box-shadow:0 1px 2px rgba(0,0,0,.03);
+  }
+  .ocard.paid{border-left:4px solid var(--green);}
+  .ocard .ohead{display:flex; align-items:baseline; gap:10px; margin-bottom:8px;}
+  .ocard .ono{font-size:18px; font-weight:800; color:var(--accent);}
+  .ocard .otime{font-size:13px; color:var(--sub); font-weight:700;}
+  .ocard .onote{
+    font-size:12.5px; font-weight:800; color:var(--accent);
+    background:var(--accent-soft); border:1px solid #ffd7c4; border-radius:8px;
+    padding:4px 8px; margin-bottom:8px; display:inline-block;
+  }
+  .item{display:flex; align-items:baseline; gap:6px; padding:5px 0; border-top:1px dashed var(--line); line-height:1.6;}
+  .item:first-of-type{border-top:0;}
+  .item .q{font-weight:800; color:var(--txt); font-size:14px; min-width:26px;}
+  .item .nm{font-weight:800; font-size:15px;}
+  .item .cat{
+    font-size:11px; font-weight:800; color:#fff; background:var(--accent);
+    border-radius:6px; padding:1px 6px; text-transform:none;
+  }
+  .item .ext{font-size:12.5px; font-weight:700; color:var(--accent);}
+  .item .note{font-size:12.5px; font-weight:700; color:var(--sub);}
+  .empty{color:var(--sub); font-weight:700; text-align:center; padding:60px 20px; font-size:14px;}
+  .err{color:var(--red); font-weight:800; text-align:center; padding:40px 20px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Beleg <span>·</span> plain <span>·</span> <span id="ttl"></span></h1>
+  <div class="spacer"></div>
+  <span class="stat" id="count"></span>
+  <div class="toggle">
+    <button id="tabPending" class="active"></button>
+    <button id="tabAll"></button>
+  </div>
+  <span class="stat"><span class="dot" id="connDot"></span><span id="connTxt"></span></span>
+</header>
+<main>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none"></div>
+</main>
+
+<script>
+// ===================== 基础设置 =====================
+const API_BASE = '';                       // 与后端同源
+const LANG_KEY = 'snack_lang_v1';          // 与主应用共用语言设置
+let lang = localStorage.getItem(LANG_KEY) || 'zh';
+if (lang !== 'zh' && lang !== 'nl') lang = 'zh';
+
+const I18N = {
+  zh: { title:'备料单', tabPending:'待处理', tabAll:'全部', empty:'暂无 Beleg / plain 的订单',
+        connOk:'已连接', connOffline:'离线·本机数据', connErr:'未连接',
+        connErrFull:'连接失败：读不到数据。请在店里那台跑服务的机器上打开本页面。',
+        nOrders:'{0} 单' },
+  nl: { title:'Overzicht', tabPending:'Te maken', tabAll:'Alles', empty:'Geen Beleg / plain bestellingen',
+        connOk:'Verbonden', connOffline:'Offline · lokaal', connErr:'Niet verbonden',
+        connErrFull:'Verbinding mislukt: geen gegevens. Open deze pagina op het toestel dat de server draait.',
+        nOrders:'{0} bestellingen' }
+};
+function t(k, ...a){ let s = (I18N[lang] && I18N[lang][k]) || (I18N.zh[k]) || k; a.forEach((v,i)=>{ s = s.replace('{'+i+'}', v); }); return s; }
+
+// ===================== 状态 =====================
+let menu = [], orders = [];
+let showAll = false;      // 只看待处理 / 看全部
+let lastErr = false;      // 连本机数据都没有 → 彻底读不到
+let offline = false;      // 后端连不上，但本机有缓存数据
+const L_MENU = 'snack_menu_v1', L_ORDERS = 'snack_orders_v1';   // 与主应用同一份本机缓存
+
+const $ = s => document.querySelector(s);
+const norm = v => String(v == null ? '' : v).toLowerCase().trim();
+// 「Beleg」「plain」按分类匹配（忽略大小写，允许包含关系）
+const isTarget = v => /beleg|plain/.test(norm(v));
+
+function applyLang(){
+  document.documentElement.lang = lang === 'nl' ? 'nl' : 'zh-CN';
+  document.title = 'Beleg · plain · ' + t('title');
+  $('#ttl').textContent = t('title');
+  $('#tabPending').textContent = t('tabPending');
+  $('#tabAll').textContent = t('tabAll');
+}
+
+// ===================== 取数 =====================
+async function load(){
+  try{
+    const r = await fetch(API_BASE + '/api/state', { cache:'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    if(s && s.error) throw new Error(s.error);
+    menu = Array.isArray(s.menu) ? s.menu : [];
+    orders = Array.isArray(s.orders) ? s.orders : [];
+    lastErr = false; offline = false;
+    setConn('ok');
+  }catch(e){
+    // 连不上后端：退回本机缓存（和主应用用的是同一份 localStorage）
+    const local = readLocal();
+    if(local){
+      menu = local.menu; orders = local.orders;
+      lastErr = false; offline = true;
+      setConn('offline');
+    }else{
+      lastErr = true; offline = false;
+      setConn('err');
+    }
+  }
+  render();
+}
+
+// 读取本机缓存；没有订单缓存则视为「读不到」
+function readLocal(){
+  try{
+    const raw = localStorage.getItem(L_ORDERS);
+    if(raw == null) return null;
+    const m = localStorage.getItem(L_MENU);
+    return { menu: m ? (JSON.parse(m) || []) : [], orders: JSON.parse(raw) || [] };
+  }catch(e){ return null; }
+}
+
+function setConn(mode){
+  const d = $('#connDot');
+  d.className = 'dot ' + (mode === 'ok' ? 'ok' : mode === 'offline' ? 'warn' : 'err');
+  $('#connTxt').textContent = mode === 'ok' ? t('connOk') : mode === 'offline' ? t('connOffline') : t('connErr');
+}
+
+// ===================== 渲染 =====================
+// 菜品 id -> 分类
+function catOfItem(it){
+  if(!it) return '';
+  const m = menu.find(x => String(x.id) === String(it.id));
+  return (m && m.cat) || it.cat || '';
+}
+
+function itemExtras(it){
+  const parts = [];
+  if(it.opts && it.opts.length) parts.push('（' + it.opts.join('、') + '）');
+  if(it.sauces && it.sauces.length) parts.push('蘸料：' + it.sauces.map(x=>x.name||x).join('、'));
+  if(it.comments && it.comments.length) parts.push('评论：' + it.comments.map(x=>x.name||x).join('、'));
+  if(it.stacks && it.stacks.length) parts.push('叠加：' + it.stacks.map(x=>x.name||x).join('、'));
+  return parts.join(' ');
+}
+
+function render(){
+  if(lastErr){
+    $('#grid').innerHTML = '';
+    $('#count').textContent = '';
+    $('#empty').className = 'err';
+    $('#empty').style.display = 'block';
+    $('#empty').textContent = t('connErrFull');
+    return;
+  }
+  $('#empty').className = 'empty';
+
+  // 只保留「Beleg」「plain」分类的菜品行，且订单至少剩一行才显示
+  const list = [];
+  for(const o of orders){
+    if(!showAll && o.done) continue;
+    const items = (o.items || []).filter(it => isTarget(catOfItem(it)));
+    if(items.length) list.push({ o, items });
+  }
+  // 按提交时间升序（老单在前，新单在后，与主应用一致）
+  list.sort((a, b) => (Number(a.o.at) || 0) - (Number(b.o.at) || 0));
+
+  $('#count').textContent = t('nOrders', list.length);
+
+  if(!list.length){
+    $('#grid').innerHTML = '';
+    $('#empty').style.display = 'block';
+    $('#empty').textContent = t('empty');
+    return;
+  }
+  $('#empty').style.display = 'none';
+
+  $('#grid').innerHTML = list.map(({ o, items }) => {
+    const no = (o.no == null || o.no === '') ? '' : '#' + o.no;
+    const note = o.note ? `<div class="onote">${esc(o.note)}</div>` : '';
+    const rows = items.map(it => {
+      const cat = catOfItem(it);
+      const ext = itemExtras(it);
+      const nt = it.note ? `<span class="note">${esc(it.note)}</span>` : '';
+      return `<div class="item">
+        <span class="q">${it.q}×</span>
+        <span class="nm">${esc(it.name || '')}</span>
+        ${cat ? `<span class="cat">${esc(cat)}</span>` : ''}
+        ${ext ? `<span class="ext">${esc(ext)}</span>` : ''}
+        ${nt}
+      </div>`;
+    }).join('');
+    return `<div class="ocard ${o.paid ? 'paid' : ''}">
+      <div class="ohead"><span class="ono">${esc(no || '—')}</span><span class="otime">${esc(o.time || '')}</span></div>
+      ${note}${rows}</div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ===================== 交互 =====================
+$('#tabPending').addEventListener('click', () => { showAll = false; $('#tabPending').classList.add('active'); $('#tabAll').classList.remove('active'); render(); });
+$('#tabAll').addEventListener('click',     () => { showAll = true;  $('#tabAll').classList.add('active'); $('#tabPending').classList.remove('active'); render(); });
+
+document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+
+// ===================== 启动 =====================
+applyLang();
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>

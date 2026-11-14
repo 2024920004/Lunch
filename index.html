@@ -255,6 +255,12 @@
     padding:7px 16px;border-radius:18px;cursor:pointer;transition:.15s;
   }
   .nav-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  /* 「备料单」入口：跳转到 beleg.html，做成醒目的强调色按钮 */
+  a.nav-btn{
+    text-decoration:none;display:inline-flex;align-items:center;
+    background:var(--accent-soft);color:var(--accent);border:1px solid #ffd7c4;
+  }
+  a.nav-btn:hover{background:#ffe6da;}
 
   /* 语言切换（中 / NL） */
   .lang{display:flex;gap:3px;background:#eef0f2;padding:3px;border-radius:20px;flex-shrink:0;}
@@ -865,6 +871,7 @@
     <button class="nav-btn" data-view="menu" data-i18n="navMenu">菜品管理</button>
     <button class="nav-btn" data-view="users" id="navUsers" style="display:none" data-i18n="navUsers">用户管理</button>
   </div>
+  <a class="nav-btn" id="belegLink" href="beleg.html" target="_blank" rel="noopener" data-i18n="navBeleg">备料单</a>
   <div class="spacer"></div>
   <span class="cloud" id="cloudBadge" title="云端同步状态"><span class="dot"></span><span id="cloudText" data-i18n="cloudConnecting">连接中…</span></span>
   <div class="lang" id="langSwitch">
@@ -1110,7 +1117,7 @@ const I18N = {
     login:'登录', register:'提交注册', registerUser:'注册普通用户',
     noAccount:'还没有账号？', haveAccount:'已有账号？', backToLogin:'返回登录',
     logout:'退出', roleAdmin:'管理员', roleUser:'普通用户',
-    navOrder:'点单', navMenu:'菜品管理', navUsers:'用户管理',
+    navOrder:'点单', navMenu:'菜品管理', navUsers:'用户管理', navBeleg:'备料单',
     cloudConnecting:'连接中…', cloudOnline:'云端已连接', cloudOffline:'离线（仅本机）',
     pendingTab:'待处理', doneTab:'已完成', clear:'清空', clearDone:'清空已完成',
     emptyPending:'还没有已提交的订单', emptyPendingSub:'提交后会排在最下面',
@@ -1198,7 +1205,7 @@ const I18N = {
     login:'Inloggen', register:'Registreren', registerUser:'Registreer gebruiker',
     noAccount:'Nog geen account?', haveAccount:'Al een account?', backToLogin:'Terug naar inloggen',
     logout:'Uitloggen', roleAdmin:'Beheerder', roleUser:'Gebruiker',
-    navOrder:'Bestellen', navMenu:'Menu beheer', navUsers:'Gebruikers',
+    navOrder:'Bestellen', navMenu:'Menu beheer', navUsers:'Gebruikers', navBeleg:'Overzicht',
     cloudConnecting:'Verbinden…', cloudOnline:'Cloud verbonden', cloudOffline:'Offline (alleen lokaal)',
     pendingTab:'Open', doneTab:'Afgerond', clear:'Wissen', clearDone:'Afgeronde wissen',
     emptyPending:'Nog geen bestellingen', emptyPendingSub:'Verschijnen onderaan na verzenden',
