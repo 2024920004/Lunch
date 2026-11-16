@@ -111,10 +111,10 @@
   }
   .hitem .hrow{display:flex;align-items:center;justify-content:space-between;gap:6px;}
   .hitem .hno{font-weight:800;font-size:15px;color:var(--text);}
-  .hitem .htime{font-size:11.5px;color:var(--sub);font-weight:600;flex-shrink:0;}
+  .hitem .htime{font-size:11.5px;color:var(--sub);font-weight:700;flex-shrink:0;}
   .hitem .hitems{
     margin:7px 0;
-    font-size:12.5px;color:#4a4f57;font-weight:600;line-height:1.4;
+    font-size:12.5px;color:#4a4f57;font-weight:700;line-height:1.4;
   }
   .hitem .hitems .hline{display:flex;align-items:baseline;gap:6px;min-width:0;}
   .hitem .hitems .hinfo{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;}
@@ -122,6 +122,8 @@
   .hitem .hitems .hcmt{color:#1d6fd0;font-weight:800;}
   .hitem .hitems .hstack{color:#8a5a00;font-weight:800;}
   .hitem .hitems .hnote{color:#7a4bd0;font-weight:800;}
+  .hitem .hitems .hbeleg{color:#6d28d9;font-weight:800;}
+  .hitem .hitems .hbeleg-desc{color:#6d28d9;font-weight:800;}
   .hitem .hitems .hprice{flex-shrink:0;text-align:right;min-width:48px;color:var(--accent);font-weight:800;}
   /* 整单备注：与单品备注区分（橙底，代表整单） */
   .hitem .hordernote{
@@ -131,7 +133,7 @@
     overflow-wrap:anywhere;word-break:break-word;
   }
   .hitem .hrow:nth-last-child(2){padding-top:8px;}
-  .hitem .hcount{font-size:12px;color:var(--sub);font-weight:700;}
+  .hitem .hcount{font-size:12px;color:var(--sub);font-weight:800;}
   .hitem .htotal{font-weight:800;color:var(--accent);font-size:16px;}
   .hitem .hright{display:flex;align-items:center;gap:10px;}
   .hitem .hedit{
@@ -140,20 +142,24 @@
     padding:4px 10px;cursor:pointer;flex-shrink:0;
   }
   .hitem .hedit:hover{background:#ffe6db;}
-  /* 已付款：整单付款状态标记（可点击切换） */
-  .hitem .hpay{
-    width:100%;margin-top:8px;font-family:inherit;
+  /* 整单操作按钮行：标记付款 + 已完成 / 退回待处理 */
+  .hitem .hacts{display:flex;gap:6px;margin-top:8px;}
+  .hitem .hacts > button{
+    flex:1;min-width:0;font-family:inherit;
     font-size:12px;font-weight:800;cursor:pointer;
     border-radius:8px;padding:6px 8px;
-    color:var(--sub);background:#fff;border:1px dashed var(--line);
   }
-  .hitem .hpay:hover{border-color:var(--ok);color:var(--ok);}
+  /* 未付款 = 整块红色，已付款 = 绿色 */
+  .hitem .hpay{color:#fff;background:#e5484d;border:1px solid #e5484d;}
+  .hitem .hpay:hover{background:#cf3b40;border-color:#cf3b40;color:#fff;}
   .hitem .hpay.on{color:#0f8a4a;background:#e6f6ec;border:1px solid #9fdcbc;}
-  .hitem .hpay.on:hover{background:#d9f0e2;}
+  .hitem .hpay.on:hover{background:#d9f0e2;color:#0f8a4a;border-color:#9fdcbc;}
+  /* 已完成 / 退回待处理 */
+  .hitem .hdone{color:var(--text);background:#fff;border:1px solid var(--line);}
+  .hitem .hdone:hover{border-color:var(--accent);color:var(--accent);}
   .hitem.newest{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
-  /* 整张卡片可点：待处理 ↔ 已完成 互相切换 */
-  .history-body .hitem{cursor:pointer;transition:.15s;}
-  .history-body .hitem:hover{border-color:var(--accent);transform:translateY(-1px);}
+  /* 卡片本身不再可点（完成/退回改由按钮触发） */
+  .history-body .hitem{transition:.15s;}
   /* 已完成：弱化显示 */
   .history-body[data-tab="done"] .hitem{opacity:.75;background:#fafbfc;}
   .history-body[data-tab="done"] .hitem .hno{color:var(--sub);}
@@ -201,13 +207,12 @@
     -webkit-user-select:none;user-select:none;
   }
   .card:active{transform:scale(.97);border-color:var(--accent);}
-  .card .emoji{font-size:34px;line-height:1;margin-bottom:8px;}
-  .card .name{font-weight:800;font-size:15px;line-height:1.25;
+  .card .name{font-weight:800;font-size:18px;line-height:1.25;
     overflow-wrap:anywhere;word-break:break-word;}
-  .card .desc{font-size:15px;color:var(--text);margin-top:4px;line-height:1.3;font-weight:600;
+  .card .desc{font-size:16px;color:var(--text);margin-top:4px;line-height:1.3;font-weight:600;
     overflow-wrap:anywhere;word-break:break-word;}
   .card .row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
-  .card .price{color:var(--accent);font-weight:800;font-size:16px;}
+  .card .price{color:var(--accent);font-weight:800;font-size:19px;}
   .add{
     width:28px;height:28px;border-radius:50%;border:none;
     background:var(--accent);color:#fff;font-size:20px;font-weight:700;
@@ -671,8 +676,13 @@
   .line .li-emoji{font-size:24px;width:30px;text-align:center;flex-shrink:0;}
   .line .info{flex:1;min-width:0;}
   .line .info .n{font-weight:800;font-size:14px;}
+  /* 可修改的行：直接点这一行就打开预填好的选项弹窗，无需额外按钮 */
+  .line.can-edit{cursor:pointer;border-radius:8px;}
+  .line.can-edit:active{background:#fafbfc;}
   .line .info .p{font-size:12.5px;color:var(--sub);margin-top:2px;font-weight:600;}
   .line .info .d{font-size:12px;color:var(--sub);margin-top:2px;font-weight:600;}
+  /* Beleg 的简介与名称同样式：字号、颜色、字重一致 */
+  .line .info .d.is-beleg{font-size:14px;color:var(--text);font-weight:800;}
   .line .info .opt{
     font-size:12px;font-weight:800;color:var(--accent);
     background:var(--accent-soft);border-radius:6px;
@@ -776,11 +786,10 @@
     .grid{gap:10px;}
     .chunk{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;}
     .card{padding:7px;border-radius:9px;}
-    .card .emoji{font-size:21px;margin-bottom:2px;}
-    .card .name{font-size:12.5px;line-height:1.18;}
-    .card .desc{font-size:11px;margin-top:1px;line-height:1.2;}
+    .card .name{font-size:15px;line-height:1.18;}
+    .card .desc{font-size:13px;margin-top:1px;line-height:1.2;}
     .card .row{margin-top:5px;}
-    .card .price{font-size:12.5px;}
+    .card .price{font-size:15px;}
     .add{width:24px;height:24px;font-size:16px;}
     .card .in-cart{top:5px;right:5px;min-width:17px;height:17px;font-size:10.5px;}
     /* 左侧已提交订单：卡片紧凑 */
@@ -1123,7 +1132,7 @@ const I18N = {
     emptyPending:'还没有已提交的订单', emptyPendingSub:'提交后会排在最下面',
     emptyDone:'还没有已完成的订单', emptyDoneSub:'在「待处理」里点一下订单就算完成',
     editBtn:'修改', itemUnit:'件', orderNotePrefix:'整单备注：',
-    paid:'✓ 已付款', markPaid:'标记已付款', inlineNote:'〔备注:{0}〕',
+    paid:'✓ 已付款', markPaid:'标记已付款', doneBtn:'已完成', undoDone:'退回待处理', inlineNote:'〔备注:{0}〕',
     myOrder:'我的订单', phOrderNo:'订单号码',
     phOrderNote:'整单备注（选填），如：7号桌 / 不要香菜',
     cancelEdit:'取消修改', total:'合计', submit:'提交订单', submitPaid:'已付款下单',
@@ -1169,7 +1178,7 @@ const I18N = {
     tDishOff:'已下架「{0}」', tDishOn:'已上架「{0}」',
     tNotShown:'点单页不再显示', tShownAgain:'已恢复显示',
     tFillName:'请填写菜品名称', tFillPrice:'请填写正确价格', tFillNewCat:'请填写新分类名称',
-    tSaved:'已保存修改', tDishAdded:'已添加菜品',
+    tSaved:'已保存修改', tDishAdded:'已添加菜品', tLineUpdated:'已修改这道菜',
     tPaidMarked:'已标记付款', tPaidUnmarked:'已取消付款',
     tOrderDone:'订单已完成', tBackToPending:'已退回待处理',
     orderNoLabel:'单号 {0}', orderNoMoved:'单号 {0} 已移到「{1}」',
@@ -1211,7 +1220,7 @@ const I18N = {
     emptyPending:'Nog geen bestellingen', emptyPendingSub:'Verschijnen onderaan na verzenden',
     emptyDone:'Nog geen afgeronde bestellingen', emptyDoneSub:'Tik in "Open" op een bestelling om af te ronden',
     editBtn:'Aanpassen', itemUnit:'st', orderNotePrefix:'Hele bestelling: ',
-    paid:'✓ Betaald', markPaid:'Markeer betaald', inlineNote:'〔Opmerking:{0}〕',
+    paid:'✓ Betaald', markPaid:'Markeer betaald', doneBtn:'Afronden', undoDone:'Terug naar open', inlineNote:'〔Opmerking:{0}〕',
     myOrder:'Mijn bestelling', phOrderNo:'Bestelnummer',
     phOrderNote:'Opmerking hele bestelling (optioneel), bijv. tafel 7 / geen koriander',
     cancelEdit:'Annuleren', total:'Totaal', submit:'Bestelling plaatsen', submitPaid:'Bestellen (betaald)',
@@ -1257,7 +1266,7 @@ const I18N = {
     tDishOff:'"{0}" uitgezet', tDishOn:'"{0}" aangezet',
     tNotShown:'Niet meer zichtbaar op de bestelpagina', tShownAgain:'Weer zichtbaar',
     tFillName:'Voer een gerechtnaam in', tFillPrice:'Voer een geldige prijs in', tFillNewCat:'Voer een nieuwe categorienaam in',
-    tSaved:'Wijzigingen opgeslagen', tDishAdded:'Gerecht toegevoegd',
+    tSaved:'Wijzigingen opgeslagen', tDishAdded:'Gerecht toegevoegd', tLineUpdated:'Gerecht aangepast',
     tPaidMarked:'Gemarkeerd als betaald', tPaidUnmarked:'Betaling ongedaan gemaakt',
     tOrderDone:'Bestelling afgerond', tBackToPending:'Teruggezet naar open',
     orderNoLabel:'Nummer {0}', orderNoMoved:'Nummer {0} verplaatst naar "{1}"',
@@ -1356,7 +1365,8 @@ function loadCart(){
   }catch(e){ return []; }
 }
 let orders = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
-let editingOrderNo = null;   // 正在修改的待处理订单单号（null 表示新建订单）
+let editingOrderNo = null;   // 正在修改的待处理订单单号（只用于界面显示；null 表示新建订单）
+let editingOrderUid = null;  // 正在修改的订单唯一标识（按它定位原单，单号重复也不会改错）
 let menu = JSON.parse(localStorage.getItem(MENU_KEY) || 'null') || DEFAULT_MENU.slice();
 // 分类：可自定义增删改名与排序
 let cats = loadCats();
@@ -1449,7 +1459,9 @@ function addItem(id, opts=[], sauces=[], comments=[], stacks=[], note='', delta=
     line.qty += delta;
     if(line.qty <= 0) cart = cart.filter(l=>l!==line);
   }else if(delta > 0){
-    cart.push({id, opts:[...opts], sauces:norm, comments:cmts, stacks:stks, note:nt, qty:delta});
+    // 行上带一份菜品快照：万一之后菜品被删/菜单被同步替换，仍能保住这一行
+    cart.push({id, name:dish?dish.name:'', desc:dish?(dish.desc||''):'', emoji:dish?dish.emoji:'', cat:dish?dish.cat:'',
+               opts:[...opts], sauces:norm, comments:cmts, stacks:stks, note:nt, qty:delta});
   }
   save(); renderMenu(); renderOrder();
 }
@@ -1467,6 +1479,33 @@ function dishOfLine(line){
   let d = line.id ? menu.find(m=>!m.divider && m.id===line.id) : null;
   if(!d && line.name) d = menu.find(m=>!m.divider && m.name===line.name);
   return d || null;
+}
+
+// 行的显示信息：优先用行上保存的快照（改单时保住菜名/描述，不被菜单改名影响），
+// 行上没有才退回当前菜单。菜品被删后行依然能显示，不会整行丢掉。
+function lineView(l){
+  const d = dishOfLine(l);
+  return {
+    dish: d,
+    name: (l && l.name) ? l.name : (d ? d.name : ''),
+    desc: (l && l.desc) ? l.desc : (d ? (d.desc || '') : ''),
+    emoji: (l && l.emoji) ? l.emoji : (d ? d.emoji : '') || '🍽️'
+  };
+}
+
+// 订单的唯一标识：单号会重复（自动编号与手填撞号、两台设备各自编号），
+// 内部一律用 uid 定位订单，单号只作显示。旧订单缺少 uid 时按「单号+提交时间」推算，
+// 两台设备算出的结果一致，仍然对应同一张单。
+function orderUid(o){
+  if(!o) return '';
+  if(o.uid) return String(o.uid);
+  if(o.no == null) return '';
+  o.uid = 'u' + String(o.no) + '_' + (Number(o.at) || 0);
+  return o.uid;
+}
+// 新订单的唯一标识
+function newOrderUid(){
+  return 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 // 已提交订单里单行的单价（含蘸料/评论加价；旧订单无 unit 则按菜单 + 加价推算）
@@ -1510,7 +1549,7 @@ function renderHistory(){
         return (a.at||0) - (b.at||0)                         // 其余按提交先后升序 → 新单在末尾
             || (Number(a.no)||0) - (Number(b.no)||0);        // 老数据没有提交时间，退回按单号
       });
-  const newestNo = (historyTab==='pending' && list.length) ? list[list.length-1].no : null;
+  const newestUid = (historyTab==='pending' && list.length) ? orderUid(list[list.length-1]) : null;
   const emptyText = historyTab==='done' ? tr('emptyDone') : tr('emptyPending');
   const emptySub  = historyTab==='done' ? tr('emptyDoneSub') : tr('emptyPendingSub');
   $('#history').innerHTML = list.length ? list.map((o,idx)=>{
@@ -1521,9 +1560,14 @@ function renderHistory(){
       const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
       const note = i.note ? ` <span class="hnote">${tr('inlineNote', i.note)}</span>` : '';
       const sum = itemUnit(i) * (i.q||1);
-      return `<div class="hline"><span class="hinfo">${i.q}x ${i.name}${i.desc?' '+i.desc:''}${opts}${sauces}${cmts}${stks}${note}</span><span class="hprice">${eu(sum)}</span></div>`;
+      // Beleg 分类的菜名与简介：单独着色，方便在订单里一眼区分（分类优先取订单行上的快照，其次查菜单）
+      const icat = i.cat || ((menu.find(m=>m.id===i.id)||{}).cat) || '';
+      const isBeleg = /beleg/i.test(icat);
+      const iname = isBeleg ? `<span class="hbeleg">${i.name}</span>` : i.name;
+      const idesc = i.desc ? (isBeleg ? ` <span class="hbeleg-desc">${i.desc}</span>` : ' '+i.desc) : '';
+      return `<div class="hline"><span class="hinfo">${i.q}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}</span><span class="hprice">${eu(sum)}</span></div>`;
     }).join('');
-    return `<div class="hitem ${historyTab==='pending' && newestNo!=null && String(o.no)===String(newestNo) ? 'newest':''}" data-no="${o.no}">
+    return `<div class="hitem ${historyTab==='pending' && newestUid!=null && orderUid(o)===newestUid ? 'newest':''}" data-uid="${orderUid(o)}">
       <div class="hrow">
         <span class="hno">${o.no}</span>
         <span class="htime">${o.time}</span>
@@ -1533,11 +1577,14 @@ function renderHistory(){
       <div class="hrow">
         <span class="hcount">${o.count} ${tr('itemUnit')}</span>
         <span class="hright">
-          ${historyTab==='pending' ? `<button class="hedit" data-edit="${o.no}">${tr('editBtn')}</button>` : ''}
+          ${historyTab==='pending' ? `<button class="hedit" data-edit="${orderUid(o)}">${tr('editBtn')}</button>` : ''}
           <span class="htotal">${eu(o.total)}</span>
         </span>
       </div>
-      <button class="hpay ${o.paid?'on':''}" data-pay="${o.no}">${o.paid?tr('paid'):tr('markPaid')}</button>
+      <div class="hacts">
+        <button class="hpay ${o.paid?'on':''}" data-pay="${orderUid(o)}">${o.paid?tr('paid'):tr('markPaid')}</button>
+        <button class="hdone" data-done="${orderUid(o)}">${o.done?tr('undoDone'):tr('doneBtn')}</button>
+      </div>
     </div>`;
   }).join('') : `<div class="empty"><div class="big">🧾</div><div>${emptyText}</div><div style="font-size:12px">${emptySub}</div></div>`;
 }
@@ -1599,7 +1646,6 @@ function renderMenu(){
       const hasOpts = (i.opts && i.opts.length) || (i.sauces && i.sauces.length);
       return `<div class="card" data-id="${i.id}">
         ${q?`<span class="in-cart">${q}</span>`:''}
-        <div class="emoji">${i.emoji}</div>
         <div class="name">${i.name}${hasOpts?`<span class="opt-tag">${tr('optTag')}</span>`:''}</div>
         <div class="desc">${i.desc||''}</div>
         <div class="row">
@@ -1618,24 +1664,29 @@ function renderMenu(){
 function renderOrder(){
   let count = 0, total = 0;
   const lines = cart.map((l,idx)=>{
-    const item = dishOfLine(l);
-    if(!item) return '';
+    const v = lineView(l);
+    if(!v.name) return '';                 // 连名字都没有才真的丢掉
+    const item = v.dish;
     const q = l.qty;
+    const isBeleg = /beleg/i.test((item && item.cat) || l.cat || '');
     const chosen = orderSauces(item, l.sauces);   // 按菜品设定顺序显示
     const chosenCmts = orderComments(item, l.comments);
     const chosenStks = orderStacks(item, l.stacks);
-    const unit = unitPrice(item, chosen, chosenCmts, chosenStks);
+    const unit = item ? unitPrice(item, chosen, chosenCmts, chosenStks)
+                      : (Number.isFinite(l.unit) ? l.unit : unitPrice({price:0}, chosen, chosenCmts, chosenStks));
     count += q; total += unit*q;
     const optText = l.opts.length ? `<div class="opt">${l.opts.join(' · ')}</div>` : '';
     const sText = chosen.length ? `<div class="sauce">${tr('lblSauce')}${sauceText(chosen)}</div>` : '';
     const cText = chosenCmts.length ? `<div class="comment">${tr('lblComment')}${sauceText(chosenCmts)}</div>` : '';
     const kText = chosenStks.length ? `<div class="stack">${tr('lblStack')}${stackText(chosenStks)}</div>` : '';
     const nText = l.note ? `<div class="note">${tr('lblNote')}${l.note}</div>` : '';
-    const dText = item.desc ? `<div class="d">${item.desc}</div>` : '';
-    return `<div class="line">
-      <span class="li-emoji">${item.emoji}</span>
+    const dText = v.desc ? `<div class="d${isBeleg?' is-beleg':''}">${v.desc}</div>` : '';
+    // 有选项可改的菜品：整行可点，点开就是预填好的选项弹窗（不需要额外的「修改」按钮）
+    const canEdit = !!(item && ((item.opts&&item.opts.length)||(item.sauces&&item.sauces.length)||(item.comments&&item.comments.length)||(item.stacks&&item.stacks.length)));
+    return `<div class="line${canEdit?' can-edit':''}"${canEdit?` data-editline="${idx}"`:''}>
+      <span class="li-emoji">${v.emoji}</span>
       <div class="info">
-        <div class="n">${item.name}</div>
+        <div class="n">${v.name}</div>
         ${dText}
         ${optText}
         ${sText}
@@ -1686,9 +1737,9 @@ function renderOrder(){
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(cart)); }
 function saveOrders(removed){
   localStorage.setItem(ORDER_KEY, JSON.stringify(orders));
-  // 记录被删掉的订单（单号 + 原提交时间），云端据此做删除，合并时不会把删掉的又拉回来
+  // 记录被删掉的订单（唯一标识 + 原提交时间），云端据此做删除，合并时不会把删掉的又拉回来
   if(Array.isArray(removed) && removed.length)
-    orderDelPending = orderDelPending.concat(removed.map(o=>({no:o.no, at:o.at})));
+    orderDelPending = orderDelPending.concat(removed.map(o=>({uid:orderUid(o), no:o.no, at:o.at})));
   cloudPush('orders');
 }
 
@@ -1739,12 +1790,14 @@ $('#grid').addEventListener('click', e=>{
 
 // 定制选项 / 蘸料 / 评论弹窗
 let optDishId = null;
+let optEditIdx = -1;          // ≥0 表示正在修改购物车里第 N 行（-1 = 新增）
 const optSel = new Set();     // 已选「需求」
 const sauceSel = new Set();   // 已选蘸料名
 const commentSel = new Set(); // 已选评论名
 const stackSel = new Map();   // 可叠加蘸料：名称 → 份数（可叠加）
 
-function openOpt(id){
+// editIdx ≥ 0：修改购物车里已有的那一行（预填当前已选，保存后替换该行）
+function openOpt(id, editIdx = -1){
   const dish = menu.find(m=>m.id===id);
   if(!dish) return;
   const hasOpts = !!(dish.opts && dish.opts.length);
@@ -1754,8 +1807,18 @@ function openOpt(id){
   const hasChoice = hasOpts || hasSauces || hasStks || hasCmts;
   if(!hasChoice) return;   // 无选择的菜品不弹窗、不带备注
   optDishId = id;
+  optEditIdx = (editIdx >= 0 && cart[editIdx]) ? editIdx : -1;
+  const src = optEditIdx >= 0 ? cart[optEditIdx] : null;
   optSel.clear(); sauceSel.clear(); commentSel.clear(); stackSel.clear();
   $('#optNote').value = '';
+  if(src){   // 预填当前这一行已选的内容
+    (src.opts || []).forEach(o=>optSel.add(o));
+    (src.sauces || []).forEach(s=>sauceSel.add(s.name || s));
+    (src.comments || []).forEach(c=>commentSel.add(c.name || c));
+    (src.stacks || []).forEach(s=>stackSel.set(s.name || s, s.n || 1));
+    $('#optNote').value = src.note || '';
+  }
+  $('#optAdd').textContent = optEditIdx >= 0 ? tr('saveChanges') : tr('addToOrder');
 
   const titleEl = $('#optTitle');
   titleEl.textContent = `${dish.emoji} ${dish.name}`;
@@ -1772,13 +1835,13 @@ function openOpt(id){
   $('#noteSection').style.display = hasChoice ? 'block' : 'none';
 
   $('#optList').innerHTML = hasOpts
-    ? dish.opts.map((o,i)=>`<button class="opt" data-oi="${i}">${o}</button>`).join('')
+    ? dish.opts.map((o,i)=>`<button class="opt ${optSel.has(o)?'on':''}" data-oi="${i}">${o}</button>`).join('')
     : '';
   $('#sauceList').innerHTML = hasSauces
-    ? dish.sauces.map((s,i)=>`<button class="opt" data-si="${i}">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}</span>`:''}</button>`).join('')
+    ? dish.sauces.map((s,i)=>`<button class="opt ${sauceSel.has(s.name)?'on':''}" data-si="${i}">${s.name}${s.price>0?`<span class="opp">+${eu(s.price)}</span>`:''}</button>`).join('')
     : '';
   $('#commentList').innerHTML = hasCmts
-    ? dish.comments.map((c,i)=>`<button class="opt" data-ci="${i}">${c.name}${c.price>0?`<span class="opp">+${eu(c.price)}</span>`:''}</button>`).join('')
+    ? dish.comments.map((c,i)=>`<button class="opt ${commentSel.has(c.name)?'on':''}" data-ci="${i}">${c.name}${c.price>0?`<span class="opp">+${eu(c.price)}</span>`:''}</button>`).join('')
     : '';
   renderStackList();
 
@@ -1823,6 +1886,7 @@ $('#stackList').addEventListener('click', e=>{
 function closeOpt(){
   $('#optModal').classList.remove('show');
   optDishId = null;
+  optEditIdx = -1;
 }
 // 弹窗里的实时单价与已选数量
 function syncOptPrice(){
@@ -1907,6 +1971,17 @@ $('#optAdd').addEventListener('click', ()=>{
     .map(s=>({name:s.name, price:s.price, n:stackSel.get(s.name)||1}));
   const unit = unitPrice(dish, sauces, comments, stacks);
   const note = $('#optNote').value.trim();
+
+  // 修改购物车里已有的行：替换该行的选项，数量、菜品快照保持不变
+  if(optEditIdx >= 0 && cart[optEditIdx]){
+    const l = cart[optEditIdx];
+    l.opts = opts; l.sauces = sauces; l.comments = comments; l.stacks = stacks; l.note = note;
+    closeOpt();
+    save(); renderOrder();
+    showToast('💾', tr('tLineUpdated'), `${dish.name} · ${eu(unit)}`);
+    return;
+  }
+
   addItem(optDishId, opts, sauces, comments, stacks, note);
   flashCard(optDishId);
   closeOpt();
@@ -2321,8 +2396,14 @@ function flashCard(id){
 $('#lines').addEventListener('click', e=>{
   const inc = e.target.closest('[data-inc]');
   const dec = e.target.closest('[data-dec]');
-  if(inc) changeLineQty(+inc.dataset.inc, 1);
-  if(dec) changeLineQty(+dec.dataset.dec, -1);
+  if(inc){ changeLineQty(+inc.dataset.inc, 1); return; }
+  if(dec){ changeLineQty(+dec.dataset.dec, -1); return; }
+  if(e.target.closest('.qty')) return;                      // 数量区不触发修改
+  const et = e.target.closest('[data-editline]');           // 点这一行菜品 → 预填选项弹窗
+  if(et){
+    const i = +et.dataset.editline, l = cart[i];
+    if(l && menu.find(m=>m.id===l.id)) openOpt(l.id, i);
+  }
 });
 
 // 数量可手动输入：只允许数字，失焦/回车时生效
@@ -2342,7 +2423,7 @@ $('#lines').addEventListener('keydown', e=>{
 
 $('#clearBtn').addEventListener('click', ()=>{
   if(!cart.length && editingOrderNo == null && !orderNote && !manualNo) return;
-  cart = []; editingOrderNo = null; clearOrderMeta(); save(); renderMenu(); renderOrder();
+  cart = []; editingOrderNo = null; editingOrderUid = null; clearOrderMeta(); save(); renderMenu(); renderOrder();
 });
 
 // 整单备注：输入即保存到本地暂存，提交时写入订单
@@ -2374,11 +2455,11 @@ $('#htabs').addEventListener('click', e=>{
   renderHistory();
 });
 
-// 点订单卡片 → 待处理 ↔ 已完成 互相切换（点错可点回来）
+// 订单卡片按钮：标记付款 / 已完成（退回待处理）/ 修改
 $('#history').addEventListener('click', e=>{
   const payBtn = e.target.closest('[data-pay]');
-  if(payBtn){                                              // 「标记已付款 / 已付款」不触发完成切换
-    const o = orders.find(x=>String(x.no)===payBtn.dataset.pay);
+  if(payBtn){                                              // 「标记已付款 / 已付款」
+    const o = orders.find(x=>orderUid(x)===payBtn.dataset.pay);
     if(o){
       o.paid = !o.paid;
       saveOrders(); renderHistory();
@@ -2386,31 +2467,39 @@ $('#history').addEventListener('click', e=>{
     }
     return;
   }
+  const doneBtn = e.target.closest('[data-done]');
+  if(doneBtn){                                             // 「已完成」↔「退回待处理」
+    const o = orders.find(x=>orderUid(x)===doneBtn.dataset.done);
+    if(!o) return;
+    o.done = !o.done;
+    // 完成：记下点击完成的先后；退回：记下退回的先后（回到待处理时置顶）
+    if(o.done){ o.doneAt = nextClickAt(); delete o.backAt; }
+    else { delete o.doneAt; o.backAt = nextClickAt(); }
+    saveOrders(); renderHistory();
+    showToast(o.done?'✅':'↩️', o.done?tr('tOrderDone'):tr('tBackToPending'),
+      tr('orderNoMoved', o.no, o.done?tr('doneTab'):tr('pendingTab')));
+    return;
+  }
   const editBtn = e.target.closest('[data-edit]');
-  if(editBtn){ editOrder(editBtn.dataset.edit); return; }   // 「修改」不触发完成/退回切换
-  const card = e.target.closest('.hitem[data-no]');
-  if(!card) return;
-  const o = orders.find(x=>String(x.no)===card.dataset.no);
-  if(!o) return;
-  o.done = !o.done;
-  // 完成：记下点击完成的先后；退回：记下退回的先后（回到待处理时置顶）
-  if(o.done){ o.doneAt = nextClickAt(); delete o.backAt; }
-  else { delete o.doneAt; o.backAt = nextClickAt(); }
-  saveOrders(); renderHistory();
-  showToast(o.done?'✅':'↩️', o.done?tr('tOrderDone'):tr('tBackToPending'),
-    tr('orderNoMoved', o.no, o.done?tr('doneTab'):tr('pendingTab')));
+  if(editBtn){ editOrder(editBtn.dataset.edit); return; }   // 「修改」
 });
 
 // 把待处理订单重新载入点单购物车进行修改（改完点「保存修改」替换原单）
-function editOrder(no){
-  const o = orders.find(x=>String(x.no)===String(no));
+// uid = 订单唯一标识（不是单号；单号可能重复）
+function editOrder(uid){
+  const o = orders.find(x=>orderUid(x)===uid);
   if(!o || o.done) return;
   if(cart.length && !confirm(tr('tLoadConfirm', cart.length, o.no))) return;
   cart = o.items.map(it=>{
-    const d = menu.find(m=>!m.divider && (m.id===it.id || m.name===it.name));
+    // 先按 id 找菜品，找不到才按菜名兜底（同名菜不会认错到前面那道）
+    const d = dishOfLine(it);
     return {
       id: d ? d.id : it.id,               // 旧订单可能没有 id，按菜名找回当前菜品
       name: it.name || (d ? d.name : ''), // 保留菜名，菜单找不到时仍可按名匹配
+      desc: (it.desc != null ? it.desc : (d ? d.desc : '')) || '',   // 保留描述，菜单改名也不影响这一行
+      emoji: it.emoji || (d ? d.emoji : ''),
+      cat: it.cat || (d ? d.cat : ''),                               // 保留分类，菜品被删后备料单也能显示
+      unit: Number.isFinite(it.unit) ? it.unit : itemUnit(it),       // 保留原单价，菜品被删后金额不丢
       opts: [...(it.opts||[])],
       sauces: (it.sauces||[]).map(s=>({name:s.name, price:Number(s.price)||0})),
       comments: (it.comments||[]).map(c=>({name:c.name, price:Number(c.price)||0})),
@@ -2420,6 +2509,7 @@ function editOrder(no){
     };
   });
   editingOrderNo = o.no;
+  editingOrderUid = orderUid(o);
   orderNote = o.note || '';
   if(orderNote) localStorage.setItem(NOTE_KEY, orderNote); else localStorage.removeItem(NOTE_KEY);
   save(); renderMenu(); renderOrder();
@@ -2431,7 +2521,7 @@ function editOrder(no){
 $('#editCancel').addEventListener('click', ()=>{
   if(editingOrderNo == null) return;
   const no = editingOrderNo;
-  editingOrderNo = null;
+  editingOrderNo = null; editingOrderUid = null;
   cart = []; clearOrderMeta(); save(); renderMenu(); renderOrder();
   showToast('↩️', tr('tEditCancelled'), tr('tOrderUnchanged', no));
 });
@@ -2452,12 +2542,17 @@ function submitOrder(paid){
   const items = [];
   const missing = [];
   cart.forEach(l=>{
-    const m = dishOfLine(l);
-    if(!m){ missing.push(l.name || tr('tOffDish')); return; }
-    const unit = unitPrice(m, l.sauces, l.comments, l.stacks);
+    const v = lineView(l);
+    if(!v.name){ missing.push(l.name || tr('tOffDish')); return; }   // 名字都没有才跳过
+    const m = v.dish;
+    const chosen = orderSauces(m, l.sauces);
+    const cmts = orderComments(m, l.comments);
+    const stks = orderStacks(m, l.stacks);
+    const unit = m ? unitPrice(m, chosen, cmts, stks)
+                   : (Number.isFinite(l.unit) ? l.unit : unitPrice({price:0}, chosen, cmts, stks));
     t += unit * l.qty;
     n += l.qty;
-    items.push({id:m.id, name:m.name, desc:m.desc, q:l.qty, unit, opts:[...l.opts], sauces:orderSauces(m, l.sauces), comments:orderComments(m, l.comments), stacks:orderStacks(m, l.stacks), note:l.note||''});
+    items.push({id: m ? m.id : l.id, name: v.name, desc: v.desc, cat: m ? m.cat : (l.cat || ''), q:l.qty, unit, opts:[...l.opts], sauces:chosen, comments:cmts, stacks:stks, note:l.note||''});
   });
   if(!items.length){
     if(missing.length) showToast('⚠️', tr('tCannotSubmit'), tr('tNotFound') + missing.join('、'));
@@ -2468,20 +2563,20 @@ function submitOrder(paid){
   const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 
   if(editingOrderNo != null){
-    // 修改模式：替换原待处理订单（保留单号与排序位置）
-    const o = orders.find(x=>String(x.no)===String(editingOrderNo));
+    // 修改模式：替换原待处理订单（按唯一标识定位，单号重复也不会改到别的单）
+    const o = orders.find(x=>orderUid(x)===editingOrderUid);
     if(o){
       o.items = items; o.count = n; o.total = t; o.time = time; o.note = orderNote.trim();
       if(paid) o.paid = true;                    // 点「已付款下单」时才改为已付款，普通保存不动付款状态
       delete o.doneAt; delete o.backAt;
     }
     const no = editingOrderNo;
-    editingOrderNo = null;
+    editingOrderNo = null; editingOrderUid = null;
     saveOrders(); renderHistory();
     showToast('✅', paid ? tr('tSavedPaid') : tr('tModifiedSaved'), tr('orderInfo', n, eu(t), no));
   } else {
     // 订单号码：手填就用填的（重复则拦截）；留空则自动编号。
-    // 自动编号与手填号码互不影响：自动序列只看「自动单」，例：1、2、3 → 手填 2202 → 下一个自动仍是 4
+    // 自动编号取「自动单」的最大号 +1，并跳过已被占用的号码（手填号、或其它设备用过的号），绝不撞号
     const wanted = manualNo.trim();
     let no, src;
     if(wanted){
@@ -2491,10 +2586,12 @@ function submitOrder(paid){
       }
       no = wanted; src = 'manual';
     } else {
-      no = orders.filter(o=>o.src !== 'manual').reduce((mx,o)=>Math.max(mx, Number(o.no)||0), 0) + 1;
-      src = 'auto';
+      const used = new Set(orders.map(o=>String(o.no)));
+      let cand = orders.filter(o=>o.src !== 'manual').reduce((mx,o)=>Math.max(mx, Number(o.no)||0), 0);
+      while(used.has(String(cand + 1))) cand++;
+      no = cand + 1; src = 'auto';
     }
-    orders.unshift({no, src, at: Date.now(), time, items, count:n, total:t, note: orderNote.trim(), paid: !!paid});   // 排序用 at，与单号无关
+    orders.unshift({uid: newOrderUid(), no, src, at: Date.now(), time, items, count:n, total:t, note: orderNote.trim(), paid: !!paid});   // 排序用 at，与单号无关
     saveOrders(); renderHistory();
     showToast(paid ? '💰' : '✅', paid ? tr('tPaidSuccess') : tr('tSuccess'), tr('orderInfo', n, eu(t), no));
   }
@@ -2641,7 +2738,7 @@ const COLLS = ['menu','cats','users','orders'];
 const dirty = {};             // 本地改了、待推送的集合
 const timers = {};            // 推送防抖定时器
 const snap = {};              // 上次与云端对齐的数据快照（JSON 字符串）
-let orderDelPending = [];     // 待通知云端的「已删除订单」[{no, at}]（防止合并时把删掉的重又拉回来）
+let orderDelPending = [];     // 待通知云端的「已删除订单」[{uid, no, at}]（防止合并时把删掉的重又拉回来）
 
 function collData(name){
   return name==='menu' ? menu : name==='cats' ? cats : name==='users' ? users : name==='orders' ? orders : null;
@@ -2664,13 +2761,10 @@ function cloudPush(name){
 async function cloudFlush(name){
   if(!cloudOn || !dirty[name]) return;
   const patch = {}; patch[name] = collData(name);
-  // 订单：把「本次要删掉的单号」一起上报，云端会记入墓碑并做合并
+  // 订单：把「本次要删掉的订单」一起上报，云端会记入墓碑并做合并
   let sentDel = [];
   if(name === 'orders'){
-    sentDel = orderDelPending.filter(d=>{
-      const o = orders.find(x=>String(x.no)===String(d.no));
-      return !(o && (Number(o.at)||0) >= (Number(d.at)||0));   // 单号已被重新使用 → 不再上报删除
-    });
+    sentDel = orderDelPending.filter(d => !orders.some(o => orderUid(o) === d.uid));  // 该单还在（没删成）→ 不再上报删除
     if(sentDel.length) patch.orderDel = sentDel;
   }
   try{
@@ -2682,8 +2776,8 @@ async function cloudFlush(name){
     if(typeof j.rev === 'number') cloudRev = j.rev;
     if(name === 'orders'){
       if(sentDel.length){
-        const sentNos = new Set(sentDel.map(d=>String(d.no)));
-        orderDelPending = orderDelPending.filter(d=>!sentNos.has(String(d.no)));
+        const sentUids = new Set(sentDel.map(d=>d.uid));
+        orderDelPending = orderDelPending.filter(d=>!sentUids.has(d.uid));
       }
       // 服务端返回合并后的权威订单（含其它设备同时下的单），直接采用，避免各设备不一致
       if(Array.isArray(j.orders)){
@@ -2785,8 +2879,8 @@ async function importBackup(file){
   cats = Array.isArray(data.cats) && data.cats.length ? data.cats : cats;
   orders = Array.isArray(data.orders) ? data.orders : [];
   if(data.users.length) users = data.users;
-  const keptNos = new Set(orders.map(o=>String(o.no)));
-  const removed = oldOrders.filter(o=>!keptNos.has(String(o.no)));   // 备份里没有的旧单 → 通知云端删除
+  const keptUids = new Set(orders.map(o=>orderUid(o)));
+  const removed = oldOrders.filter(o=>!keptUids.has(orderUid(o)));   // 备份里没有的旧单 → 通知云端删除
   saveMenu(); saveCats(); saveOrders(removed); saveUsers();
   renderCats(); renderMenu(); renderOrder(); renderHistory(); renderAdmin(); renderUsers();
   showToast('✅', tr('tBackupImported'), tr('backupSummary', menu.length, orders.length, users.length));

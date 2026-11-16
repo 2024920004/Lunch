@@ -40,6 +40,8 @@
     padding:12px 14px; box-shadow:0 1px 2px rgba(0,0,0,.03);
   }
   .ocard.paid{border-left:4px solid var(--green);}
+  .ocard.unpaid{border-left:4px solid var(--red);}
+  .ocard.unpaid .ono{color:var(--red);}
   .ocard .ohead{display:flex; align-items:baseline; gap:10px; margin-bottom:8px;}
   .ocard .ono{font-size:18px; font-weight:800; color:var(--accent);}
   .ocard .otime{font-size:13px; color:var(--sub); font-weight:700;}
@@ -48,7 +50,7 @@
     background:var(--accent-soft); border:1px solid #ffd7c4; border-radius:8px;
     padding:4px 8px; margin-bottom:8px; display:inline-block;
   }
-  .item{display:flex; align-items:baseline; gap:6px; padding:5px 0; border-top:1px dashed var(--line); line-height:1.6;}
+  .item{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px dashed var(--line); line-height:1.6;}
   .item:first-of-type{border-top:0;}
   .item .q{font-weight:800; color:var(--txt); font-size:14px; min-width:26px;}
   .item .nm{font-weight:800; font-size:15px;}
@@ -56,7 +58,8 @@
     font-size:11px; font-weight:800; color:#fff; background:var(--accent);
     border-radius:6px; padding:1px 6px; text-transform:none;
   }
-  .item .ext{font-size:12.5px; font-weight:700; color:var(--accent);}
+  .item .ext{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--accent);}
+  .item .desc{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--sub);}
   .item .note{font-size:12.5px; font-weight:700; color:var(--sub);}
   .empty{color:var(--sub); font-weight:700; text-align:center; padding:60px 20px; font-size:14px;}
   .err{color:var(--red); font-weight:800; text-align:center; padding:40px 20px;}
@@ -89,10 +92,12 @@ const I18N = {
   zh: { title:'备料单', tabPending:'待处理', tabAll:'全部', empty:'暂无 Beleg / plain 的订单',
         connOk:'已连接', connOffline:'离线·本机数据', connErr:'未连接',
         connErrFull:'连接失败：读不到数据。请在店里那台跑服务的机器上打开本页面。',
+        optsPrefix:'可选：', saucesPrefix:'蘸料：', commentsPrefix:'评论：', stacksPrefix:'可叠加：', notePrefix:'备注：',
         nOrders:'{0} 单' },
   nl: { title:'Overzicht', tabPending:'Te maken', tabAll:'Alles', empty:'Geen Beleg / plain bestellingen',
         connOk:'Verbonden', connOffline:'Offline · lokaal', connErr:'Niet verbonden',
         connErrFull:'Verbinding mislukt: geen gegevens. Open deze pagina op het toestel dat de server draait.',
+        optsPrefix:'Keuzes: ', saucesPrefix:'Sausen: ', commentsPrefix:'Opmerkingen: ', stacksPrefix:'Stapelbaar: ', notePrefix:'Opmerking: ',
         nOrders:'{0} bestellingen' }
 };
 function t(k, ...a){ let s = (I18N[lang] && I18N[lang][k]) || (I18N.zh[k]) || k; a.forEach((v,i)=>{ s = s.replace('{'+i+'}', v); }); return s; }
@@ -167,13 +172,24 @@ function catOfItem(it){
   return (m && m.cat) || it.cat || '';
 }
 
+const eu = n => '€' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+// 蘸料/评论展示文本：名称 + 加价（有价才显示）
+function sauceText(list){
+  return (list || []).map(s => (s.name || s) + (Number(s.price) > 0 ? ' +' + eu(s.price) : '')).join('、');
+}
+// 可叠加蘸料展示文本：名称×份数 + 叠加后的总加价（有价才显示）
+function stackText(list){
+  return (list || []).map(s => `${s.name || s}×${s.n || 1}` + (Number(s.price) > 0 ? ' +' + eu(Number(s.price) * (s.n || 1)) : '')).join('、');
+}
+
+// 备料单要看到客人选的全部内容：可选 / 蘸料 / 评论 / 可叠加，每项单独一行
 function itemExtras(it){
-  const parts = [];
-  if(it.opts && it.opts.length) parts.push('（' + it.opts.join('、') + '）');
-  if(it.sauces && it.sauces.length) parts.push('蘸料：' + it.sauces.map(x=>x.name||x).join('、'));
-  if(it.comments && it.comments.length) parts.push('评论：' + it.comments.map(x=>x.name||x).join('、'));
-  if(it.stacks && it.stacks.length) parts.push('叠加：' + it.stacks.map(x=>x.name||x).join('、'));
-  return parts.join(' ');
+  const lines = [];
+  if(it.opts && it.opts.length) lines.push(t('optsPrefix') + it.opts.join(' / '));
+  if(it.sauces && it.sauces.length) lines.push(t('saucesPrefix') + sauceText(it.sauces));
+  if(it.comments && it.comments.length) lines.push(t('commentsPrefix') + sauceText(it.comments));
+  if(it.stacks && it.stacks.length) lines.push(t('stacksPrefix') + stackText(it.stacks));
+  return lines;
 }
 
 function render(){
@@ -212,17 +228,19 @@ function render(){
     const note = o.note ? `<div class="onote">${esc(o.note)}</div>` : '';
     const rows = items.map(it => {
       const cat = catOfItem(it);
-      const ext = itemExtras(it);
-      const nt = it.note ? `<span class="note">${esc(it.note)}</span>` : '';
+      const ext = itemExtras(it).map(l => `<span class="ext">${esc(l)}</span>`).join('');
+      const ds = it.desc ? `<span class="desc">${esc(it.desc)}</span>` : '';
+      const nt = it.note ? `<span class="note">${t('notePrefix')}${esc(it.note)}</span>` : '';
       return `<div class="item">
         <span class="q">${it.q}×</span>
         <span class="nm">${esc(it.name || '')}</span>
         ${cat ? `<span class="cat">${esc(cat)}</span>` : ''}
-        ${ext ? `<span class="ext">${esc(ext)}</span>` : ''}
+        ${ds}
+        ${ext}
         ${nt}
       </div>`;
     }).join('');
-    return `<div class="ocard ${o.paid ? 'paid' : ''}">
+    return `<div class="ocard ${o.paid ? 'paid' : 'unpaid'}">
       <div class="ohead"><span class="ono">${esc(no || '—')}</span><span class="otime">${esc(o.time || '')}</span></div>
       ${note}${rows}</div>`;
   }).join('');
