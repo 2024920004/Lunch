@@ -60,6 +60,8 @@
   }
   .item .ext{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--accent);}
   .item .desc{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--sub);}
+  /* Beleg：菜名与简介同样大小、同样颜色 */
+  .item.is-beleg .nm, .item.is-beleg .desc{color:#6d28d9; font-size:15px; font-weight:800;}
   .item .note{font-size:12.5px; font-weight:700; color:var(--sub);}
   .empty{color:var(--sub); font-weight:700; text-align:center; padding:60px 20px; font-size:14px;}
   .err{color:var(--red); font-weight:800; text-align:center; padding:40px 20px;}
@@ -231,7 +233,8 @@ function render(){
       const ext = itemExtras(it).map(l => `<span class="ext">${esc(l)}</span>`).join('');
       const ds = it.desc ? `<span class="desc">${esc(it.desc)}</span>` : '';
       const nt = it.note ? `<span class="note">${t('notePrefix')}${esc(it.note)}</span>` : '';
-      return `<div class="item">
+      const bl = /beleg/i.test(cat) ? ' is-beleg' : '';
+      return `<div class="item${bl}">
         <span class="q">${it.q}×</span>
         <span class="nm">${esc(it.name || '')}</span>
         ${cat ? `<span class="cat">${esc(cat)}</span>` : ''}
