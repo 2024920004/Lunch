@@ -24,6 +24,10 @@
   header h1{font-size:17px; font-weight:800; margin:0; letter-spacing:.3px;}
   header h1 span{color:var(--accent);}
   .spacer{flex:1;}
+  .navbtn{
+    text-decoration:none; color:var(--txt); border:1px solid var(--line); background:#fff;
+    padding:6px 12px; border-radius:9px; font-size:13px; font-weight:800;
+  }
   .stat{font-size:13px; color:var(--sub); font-weight:700;}
   .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--sub); margin-right:5px; vertical-align:1px;}
   .dot.ok{background:var(--green);} .dot.err{background:var(--red);} .dot.warn{background:#f59e0b;}
@@ -44,12 +48,25 @@
   .ocard.unpaid .ono{color:var(--red);}
   .ocard .ohead{display:flex; align-items:baseline; gap:10px; margin-bottom:8px;}
   .ocard .ono{font-size:18px; font-weight:800; color:var(--accent);}
+  /* 4 位数字单号（电话单）：显示为红色「Tel 1234」 */
+  .ocard .ono.htel{color:var(--red);}
+  /* 电话单：整张卡片浅红底，便于一眼分辨 */
+  .ocard.is-tel{background:#fdf0f0;border-color:#f3c2c4;}
   .ocard .otime{font-size:13px; color:var(--sub); font-weight:700;}
   .ocard .onote{
     font-size:12.5px; font-weight:800; color:var(--accent);
     background:var(--accent-soft); border:1px solid #ffd7c4; border-radius:8px;
     padding:4px 8px; margin-bottom:8px; display:inline-block;
   }
+  /* 已完成：按下后这张单从待处理列表移走 */
+  .ocard .odone{
+    display:block; width:100%; margin-top:10px;
+    border:1px solid var(--green); background:var(--green); color:#fff;
+    font-family:inherit; font-size:14px; font-weight:800;
+    padding:8px 10px; border-radius:9px; cursor:pointer;
+  }
+  .ocard .odone:active{opacity:.85;}
+  .ocard .odone:disabled{opacity:.6; cursor:not-allowed;}
   .item{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px dashed var(--line); line-height:1.6;}
   .item:first-of-type{border-top:0;}
   .item .q{font-weight:800; color:var(--txt); font-size:14px; min-width:26px;}
@@ -58,7 +75,8 @@
     font-size:11px; font-weight:800; color:#fff; background:var(--accent);
     border-radius:6px; padding:1px 6px; text-transform:none;
   }
-  .item .ext{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--accent);}
+  /* 可选 / 蘸料 / 评论 / 可叠加：与菜品名同样大小、同样粗度、同样黑色，方便厨房一眼看清 */
+  .item .ext{flex:0 0 100%; font-size:15px; font-weight:800; color:var(--txt);}
   .item .desc{flex:0 0 100%; font-size:12.5px; font-weight:700; color:var(--sub);}
   /* Beleg：菜名与简介同样大小、同样颜色 */
   .item.is-beleg .nm, .item.is-beleg .desc{color:#6d28d9; font-size:15px; font-weight:800;}
@@ -70,6 +88,7 @@
 <body>
 <header>
   <h1>Beleg <span>·</span> plain <span>·</span> <span id="ttl"></span></h1>
+  <a class="navbtn" id="navPending" href="pending.html" target="_blank" rel="noopener"></a>
   <div class="spacer"></div>
   <span class="stat" id="count"></span>
   <div class="toggle">
@@ -95,12 +114,12 @@ const I18N = {
         connOk:'已连接', connOffline:'离线·本机数据', connErr:'未连接',
         connErrFull:'连接失败：读不到数据。请在店里那台跑服务的机器上打开本页面。',
         optsPrefix:'可选：', saucesPrefix:'蘸料：', commentsPrefix:'评论：', stacksPrefix:'可叠加：', notePrefix:'备注：',
-        nOrders:'{0} 单' },
+        markDone:'已完成', nOrders:'{0} 单', navPending:'待处理订单' },
   nl: { title:'Overzicht', tabPending:'Te maken', tabAll:'Alles', empty:'Geen Beleg / plain bestellingen',
         connOk:'Verbonden', connOffline:'Offline · lokaal', connErr:'Niet verbonden',
         connErrFull:'Verbinding mislukt: geen gegevens. Open deze pagina op het toestel dat de server draait.',
         optsPrefix:'Keuzes: ', saucesPrefix:'Sausen: ', commentsPrefix:'Opmerkingen: ', stacksPrefix:'Stapelbaar: ', notePrefix:'Opmerking: ',
-        nOrders:'{0} bestellingen' }
+        markDone:'Afgerond', nOrders:'{0} bestellingen', navPending:'Openstaand' }
 };
 function t(k, ...a){ let s = (I18N[lang] && I18N[lang][k]) || (I18N.zh[k]) || k; a.forEach((v,i)=>{ s = s.replace('{'+i+'}', v); }); return s; }
 
@@ -110,6 +129,18 @@ let showAll = false;      // 只看待处理 / 看全部
 let lastErr = false;      // 连本机数据都没有 → 彻底读不到
 let offline = false;      // 后端连不上，但本机有缓存数据
 const L_MENU = 'snack_menu_v1', L_ORDERS = 'snack_orders_v1';   // 与主应用同一份本机缓存
+// 备料单自己的「已完成」：只影响本机备料单的显示，不写回订单、不影响主应用
+const L_PREP_DONE = 'beleg_prep_done_v1';
+let prepDone = {};
+try{ prepDone = JSON.parse(localStorage.getItem(L_PREP_DONE) || '{}') || {}; }catch(e){ prepDone = {}; }
+function savePrepDone(){ try{ localStorage.setItem(L_PREP_DONE, JSON.stringify(prepDone)); }catch(e){} }
+// 超过 2 天的记录自动清掉，避免无限增长（订单都是当天用完）
+function prunePrepDone(){
+  const now = Date.now(), MAX = 2 * 24 * 3600 * 1000;
+  let changed = false;
+  Object.keys(prepDone).forEach(k => { if(now - prepDone[k] > MAX){ delete prepDone[k]; changed = true; } });
+  if(changed) savePrepDone();
+}
 
 const $ = s => document.querySelector(s);
 const norm = v => String(v == null ? '' : v).toLowerCase().trim();
@@ -120,6 +151,7 @@ function applyLang(){
   document.documentElement.lang = lang === 'nl' ? 'nl' : 'zh-CN';
   document.title = 'Beleg · plain · ' + t('title');
   $('#ttl').textContent = t('title');
+  $('#navPending').textContent = t('navPending');
   $('#tabPending').textContent = t('tabPending');
   $('#tabAll').textContent = t('tabAll');
 }
@@ -133,6 +165,7 @@ async function load(){
     if(s && s.error) throw new Error(s.error);
     menu = Array.isArray(s.menu) ? s.menu : [];
     orders = Array.isArray(s.orders) ? s.orders : [];
+    prunePrepDone();
     lastErr = false; offline = false;
     setConn('ok');
   }catch(e){
@@ -174,6 +207,17 @@ function catOfItem(it){
   return (m && m.cat) || it.cat || '';
 }
 
+// 订单唯一标识：单号会重复，定位/改写一律按 uid（与主应用算法保持一致）
+function orderUid(o){
+  if(!o) return '';
+  if(o.uid) return String(o.uid);
+  if(o.no == null) return '';
+  o.uid = 'u' + String(o.no) + '_' + (Number(o.at) || 0);
+  return o.uid;
+}
+// 备料单本机的「已完成」（不影响订单本身）
+const isPrepDone = o => !!prepDone[orderUid(o)];
+
 const eu = n => '€' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
 // 蘸料/评论展示文本：名称 + 加价（有价才显示）
 function sauceText(list){
@@ -208,7 +252,8 @@ function render(){
   // 只保留「Beleg」「plain」分类的菜品行，且订单至少剩一行才显示
   const list = [];
   for(const o of orders){
-    if(!showAll && o.done) continue;
+    // 待处理列表：订单本身已完成，或本机备料单已标记完成，都不再显示
+    if(!showAll && (o.done || isPrepDone(o))) continue;
     const items = (o.items || []).filter(it => isTarget(catOfItem(it)));
     if(items.length) list.push({ o, items });
   }
@@ -226,7 +271,10 @@ function render(){
   $('#empty').style.display = 'none';
 
   $('#grid').innerHTML = list.map(({ o, items }) => {
-    const no = (o.no == null || o.no === '') ? '' : '#' + o.no;
+    const noRaw = (o.no == null || o.no === '') ? '' : String(o.no);
+    // 4 位数字单号视为电话单，显示为「Tel 1234」并标红
+    const isTel = /^\d{4}$/.test(noRaw);
+    const no = noRaw === '' ? '' : (isTel ? 'Tel ' + noRaw : '#' + noRaw);
     const note = o.note ? `<div class="onote">${esc(o.note)}</div>` : '';
     const rows = items.map(it => {
       const cat = catOfItem(it);
@@ -243,15 +291,33 @@ function render(){
         ${nt}
       </div>`;
     }).join('');
-    return `<div class="ocard ${o.paid ? 'paid' : 'unpaid'}">
-      <div class="ohead"><span class="ono">${esc(no || '—')}</span><span class="otime">${esc(o.time || '')}</span></div>
-      ${note}${rows}</div>`;
+    const uid = orderUid(o);
+    return `<div class="ocard ${o.paid ? 'paid' : 'unpaid'}${isTel ? ' is-tel' : ''}" data-uid="${esc(uid)}">
+      <div class="ohead"><span class="ono${isTel ? ' htel' : ''}">${esc(no || '—')}</span><span class="otime">${esc(o.time || '')}</span></div>
+      ${note}${rows}
+      ${(o.done || isPrepDone(o)) ? '' : `<button class="odone" data-done="${esc(uid)}">${t('markDone')}</button>`}</div>`;
   }).join('');
 }
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // ===================== 交互 =====================
+// 备料单本机标记「已完成」：只在备料单上把这张卡移到「已看掉」，不写回订单、不影响主应用
+function markPrepDone(uid){
+  const o = orders.find(x => orderUid(x) === uid);
+  if(!o || o.done || isPrepDone(o)) return;
+  prepDone[uid] = Date.now();
+  savePrepDone();
+  render();
+}
+
+$('#grid').addEventListener('click', e=>{
+  const b = e.target.closest('.odone');
+  if(!b) return;
+  b.disabled = true;
+  markPrepDone(b.dataset.done);
+});
+
 $('#tabPending').addEventListener('click', () => { showAll = false; $('#tabPending').classList.add('active'); $('#tabAll').classList.remove('active'); render(); });
 $('#tabAll').addEventListener('click',     () => { showAll = true;  $('#tabAll').classList.add('active'); $('#tabPending').classList.remove('active'); render(); });
 

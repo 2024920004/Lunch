@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>待处理订单 / Openstaand</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --line:#e3e5e9; --txt:#1c1e21;
+    --sub:#6b7280; --accent:#ff6b35; --accent-soft:#fff1eb;
+    --green:#16a34a; --red:#e5484d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--txt); min-height:100vh;
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  }
+  header{
+    position:sticky; top:0; z-index:10; background:#fff;
+    border-bottom:1px solid var(--line); padding:12px 16px;
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  header h1{font-size:17px; font-weight:800; margin:0; letter-spacing:.3px;}
+  header h1 span{color:var(--accent);}
+  .spacer{flex:1;}
+  .stat{font-size:14px; color:var(--sub); font-weight:800;}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--sub); margin-right:5px; vertical-align:1px;}
+  .dot.ok{background:var(--green);} .dot.err{background:var(--red);} .dot.warn{background:#f59e0b;}
+  .navbtn{
+    text-decoration:none; color:var(--text); border:1px solid var(--line); background:#fff;
+    padding:6px 12px; border-radius:9px; font-size:13px; font-weight:800;
+  }
+  .toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+  .toggle button{
+    border:0; background:#fff; padding:7px 14px; font-size:13px; font-weight:800;
+    color:var(--sub); cursor:pointer; font-family:inherit;
+  }
+  .toggle button.active{background:var(--accent); color:#fff;}
+  main{padding:16px;}
+  /* 大字号看板：卡片更大，字号更粗更大，一眼看清 */
+  .grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); align-items:start;}
+  .pcard{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.05);
+    cursor:pointer; transition:.12s;
+  }
+  .pcard:hover{border-color:var(--accent); box-shadow:0 4px 14px rgba(255,107,53,.15);}
+  .pcard.unpaid{border-left:6px solid var(--red);}
+  .pcard.paid{border-left:6px solid var(--green);}
+  .pcard.is-tel{background:#fdf0f0; border-color:#f3c2c4;}
+  .pcard .phead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  .pcard .pno{font-size:30px; font-weight:900; color:var(--accent); letter-spacing:.5px;}
+  .pcard .pno.htel{color:var(--red);}
+  .pcard .ptime{font-size:15px; font-weight:800; color:var(--sub); margin-left:auto;}
+  /* 已完成：按下后这张单从本页看板移走（只影响本机本页，不改订单） */
+  .pcard .pdone{
+    display:block; width:100%; margin-top:12px;
+    border:1px solid var(--green); background:var(--green); color:#fff;
+    font-family:inherit; font-size:15px; font-weight:800;
+    padding:10px; border-radius:10px; cursor:pointer;
+  }
+  .pcard .pdone:active{opacity:.85;}
+  .pcard .pdone:disabled{opacity:.6; cursor:not-allowed;}
+  .pcard .pnote{
+    font-size:15px; font-weight:900; color:var(--accent);
+    background:var(--accent-soft); border:1px solid #ffd7c4; border-radius:9px;
+    padding:6px 10px; margin-bottom:10px; display:inline-block;
+  }
+  .pcard .pitem{
+    display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    padding:8px 0; border-top:1px dashed var(--line); line-height:1.55;
+    font-size:19px; font-weight:800;
+  }
+  .pcard .pitem:first-of-type{border-top:0;}
+  .pcard .pitem .pq{font-weight:900; color:var(--accent); min-width:34px;}
+  .pcard .pitem .pnm{font-weight:900;}
+  .pcard .pitem .pcat{
+    font-size:12px; font-weight:900; color:#fff; background:var(--accent);
+    border-radius:6px; padding:2px 7px;
+  }
+  .pcard .pitem .pext{flex:0 0 100%; font-size:16px; font-weight:800; color:var(--txt);}
+  .pcard .pitem .pdesc{flex:0 0 100%; font-size:14px; font-weight:700; color:var(--sub);}
+  .pcard .pitem.is-beleg .pnm, .pcard .pitem.is-beleg .pdesc{color:#6d28d9;}
+  .pcard .pitem.given .pnm, .pcard .pitem.given .pq, .pcard .pitem.given .pext{
+    text-decoration:line-through; text-decoration-thickness:2px; color:var(--sub);
+  }
+  .empty{color:var(--sub); font-weight:800; text-align:center; padding:70px 20px; font-size:16px;}
+  .err{color:var(--red); font-weight:800; text-align:center; padding:50px 20px; font-size:15px;}
+
+  /* 详情弹窗 */
+  .modal{position:fixed; inset:0; background:rgba(20,22,25,.45); display:none; align-items:center; justify-content:center; z-index:120; padding:20px;}
+  .modal.show{display:flex;}
+  .modal-card{
+    background:#fff; border-radius:16px; width:100%; max-width:480px;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+    max-height:calc(100vh - 40px); max-height:calc(100dvh - 40px);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .modal-body{flex:1; min-height:0; overflow-y:auto; padding:20px 20px 8px;}
+  .modal-card h3{margin:0 0 3px; font-size:26px; font-weight:900; color:var(--accent); overflow-wrap:anywhere; word-break:break-word;}
+  .modal-card .msub{font-size:13.5px; color:var(--sub); font-weight:700; margin-bottom:15px;}
+  .om-list{display:flex; flex-direction:column; gap:9px;}
+  .om-line{
+    display:flex; align-items:baseline; gap:10px; padding:13px 14px; border-radius:11px;
+    border:1px solid var(--line); background:#fff; cursor:pointer; user-select:none; transition:.15s;
+    font-size:17px; font-weight:800; line-height:1.55;
+  }
+  .om-line:hover{border-color:var(--accent); background:var(--accent-soft);}
+  .om-line .om-info{flex:1; min-width:0; overflow-wrap:anywhere; word-break:break-word;}
+  .om-line .om-price{flex-shrink:0; font-weight:900; color:var(--accent);}
+  .om-line .hopt,.om-line .hsauce{color:#e5484d; font-weight:800;}
+  .om-line .hcmt{color:#1d6fd0; font-weight:800;}
+  .om-line .hstack{color:#8a5a00; font-weight:800;}
+  .om-line .hnote{color:#7a4bd0; font-weight:800;}
+  .om-line .hbeleg,.om-line .hbeleg-desc{color:#6d28d9; font-weight:800;}
+  /* 已给客人：整行画线并弱化 */
+  .om-line.given{background:#f7f8fa;}
+  .om-line.given .om-info,.om-line.given .om-price{
+    text-decoration:line-through; text-decoration-thickness:2px; color:var(--sub);
+  }
+  .modal-actions{display:flex; gap:10px; flex-shrink:0; padding:12px 20px 18px; border-top:1px solid var(--line);}
+  .modal-actions button{
+    flex:1; border:none; padding:13px; border-radius:10px; font-family:inherit;
+    font-size:16px; font-weight:800; cursor:pointer; background:var(--accent); color:#fff;
+  }
+  .modal-actions button:active{opacity:.88;}
+
+  /* 手机等窄屏：间距更紧凑、看板单列显示，避免横向溢出，字号仍保持大而醒目 */
+  @media (max-width:600px){
+    header{padding:10px 12px; gap:8px;}
+    header h1{font-size:16px;}
+    .stat{font-size:13px;}
+    .navbtn{padding:5px 10px; font-size:12.5px;}
+    .toggle button{padding:6px 11px; font-size:12.5px;}
+    main{padding:12px;}
+    .grid{gap:12px;}
+    .pcard{padding:13px 14px; border-radius:14px;}
+    .pcard .pno{font-size:26px;}
+    .pcard .pitem{font-size:17px; padding:7px 0;}
+    .pcard .pitem .pext{font-size:15px;}
+    .modal{padding:12px;}
+    .modal-card{border-radius:14px;}
+    .modal-body{padding:16px 16px 6px;}
+    .modal-card h3{font-size:22px;}
+    .om-line{font-size:16px; padding:11px 12px;}
+    .modal-actions{padding:10px 16px 14px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="ttl">待处理订单</h1>
+  <div class="spacer"></div>
+  <span class="stat" id="count"></span>
+  <a class="navbtn" id="navBeleg" href="beleg.html" target="_blank">备料单</a>
+  <a class="navbtn" id="navOrder" href="index.html" target="_blank">点单</a>
+  <div class="toggle">
+    <button id="langZh" class="active">中文</button>
+    <button id="langNl">NL</button>
+  </div>
+  <span class="stat"><span class="dot" id="connDot"></span><span id="connTxt"></span></span>
+</header>
+<main>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none"></div>
+</main>
+
+<div class="modal" id="detailModal">
+  <div class="modal-card">
+    <div class="modal-body">
+      <h3 id="dmTitle">—</h3>
+      <div class="msub" id="dmSub"></div>
+      <div class="om-list" id="dmList"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="dmClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== 基础设置 =====================
+const API_BASE = '';                       // 与后端同源
+const LANG_KEY = 'snack_lang_v1';          // 与主应用共用语言设置
+let lang = localStorage.getItem(LANG_KEY) || 'zh';
+if (lang !== 'zh' && lang !== 'nl') lang = 'zh';
+
+const I18N = {
+  zh: { title:'待处理订单', navBeleg:'备料单', navOrder:'点单',
+        connOk:'已连接', connOffline:'离线·本机数据', connErr:'未连接',
+        connErrFull:'连接失败：读不到数据。请在店里那台跑服务的机器上打开本页面。',
+        empty:'暂无待处理订单', nOrders:'{0} 单待处理', markDone:'已完成',
+        close:'关闭', clickDishTip:'点击菜品画线 = 已给客人', servedCount:'已给 {0}/{1}',
+        optsPrefix:'可选：', saucesPrefix:'蘸料：', commentsPrefix:'评论：', stacksPrefix:'可叠加：', notePrefix:'备注：', inlineNote:'〔备注:{0}〕' },
+  nl: { title:'Openstaande bestellingen', navBeleg:'Overzicht', navOrder:'Bestellen',
+        connOk:'Verbonden', connOffline:'Offline · lokaal', connErr:'Niet verbonden',
+        connErrFull:'Verbinding mislukt: geen gegevens. Open deze pagina op het toestel dat de server draait.',
+        empty:'Geen openstaande bestellingen', nOrders:'{0} openstaand', markDone:'Afgerond',
+        close:'Sluiten', clickDishTip:'Tik op een gerecht om te strepen = geserveerd', servedCount:'Geserveerd {0}/{1}',
+        optsPrefix:'Keuzes: ', saucesPrefix:'Sausen: ', commentsPrefix:'Opmerkingen: ', stacksPrefix:'Stapelbaar: ', notePrefix:'Opmerking: ', inlineNote:'〔Opmerking:{0}〕' }
+};
+function t(k, ...a){ let s = (I18N[lang] && I18N[lang][k]) || (I18N.zh[k]) || k; a.forEach((v,i)=>{ s = s.replace('{'+i+'}', v); }); return s; }
+
+// ===================== 状态 =====================
+let menu = [], orders = [];
+let lastErr = false;      // 连本机数据都没有 → 彻底读不到
+let offline = false;      // 后端连不上，但本机有缓存数据
+const L_MENU = 'snack_menu_v1', L_ORDERS = 'snack_orders_v1';   // 与主应用同一份本机缓存
+// 本页自己的「已完成」：只影响本机这个看板的显示，不写订单、不影响主应用和其他设备
+const L_PENDING_DONE = 'pending_done_v1';
+let pendingDone = {};
+try{ pendingDone = JSON.parse(localStorage.getItem(L_PENDING_DONE) || '{}') || {}; }catch(e){ pendingDone = {}; }
+function savePendingDone(){ try{ localStorage.setItem(L_PENDING_DONE, JSON.stringify(pendingDone)); }catch(e){} }
+// 超过 2 天的记录自动清掉，避免无限增长（订单都是当天用完）
+function prunePendingDone(){
+  const now = Date.now(), MAX = 2 * 24 * 3600 * 1000;
+  let changed = false;
+  Object.keys(pendingDone).forEach(k => { if(now - pendingDone[k] > MAX){ delete pendingDone[k]; changed = true; } });
+  if(changed) savePendingDone();
+}
+
+const $ = s => document.querySelector(s);
+const eu = n => '€' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function applyLang(){
+  document.documentElement.lang = lang === 'nl' ? 'nl' : 'zh-CN';
+  document.title = t('title');
+  $('#ttl').textContent = t('title');
+  $('#navBeleg').textContent = t('navBeleg');
+  $('#navOrder').textContent = t('navOrder');
+  $('#dmClose').textContent = t('close');
+  $('#langZh').classList.toggle('active', lang === 'zh');
+  $('#langNl').classList.toggle('active', lang === 'nl');
+}
+
+// ===================== 取数 =====================
+async function load(){
+  try{
+    const r = await fetch(API_BASE + '/api/state', { cache:'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    if(s && s.error) throw new Error(s.error);
+    menu = Array.isArray(s.menu) ? s.menu : [];
+    orders = Array.isArray(s.orders) ? s.orders : [];
+    prunePendingDone();
+    lastErr = false; offline = false;
+    setConn('ok');
+  }catch(e){
+    // 连不上后端：退回本机缓存（和主应用用的是同一份 localStorage）
+    const local = readLocal();
+    if(local){
+      menu = local.menu; orders = local.orders;
+      lastErr = false; offline = true;
+      setConn('offline');
+    }else{
+      lastErr = true; offline = false;
+      setConn('err');
+    }
+  }
+  render();
+}
+
+// 读取本机缓存；没有订单缓存则视为「读不到」
+function readLocal(){
+  try{
+    const raw = localStorage.getItem(L_ORDERS);
+    if(raw == null) return null;
+    const m = localStorage.getItem(L_MENU);
+    return { menu: m ? (JSON.parse(m) || []) : [], orders: JSON.parse(raw) || [] };
+  }catch(e){ return null; }
+}
+
+function setConn(mode){
+  const d = $('#connDot');
+  d.className = 'dot ' + (mode === 'ok' ? 'ok' : mode === 'offline' ? 'warn' : 'err');
+  $('#connTxt').textContent = mode === 'ok' ? t('connOk') : mode === 'offline' ? t('connOffline') : t('connErr');
+}
+
+// ===================== 排序 / 工具 =====================
+// 单号显示：4 位数字视为电话单 → 「Tel 1234」
+function orderNoText(no){
+  const raw = String(no == null ? '' : no);
+  return /^\d{4}$/.test(raw) ? 'Tel ' + raw : raw;
+}
+// 订单唯一标识：单号会重复，定位/改写一律按 uid（与主应用算法保持一致）
+function orderUid(o){
+  if(!o) return '';
+  if(o.uid) return String(o.uid);
+  if(o.no == null) return '';
+  o.uid = 'u' + String(o.no) + '_' + (Number(o.at) || 0);
+  return o.uid;
+}
+// 本页本机的「已完成」（只影响本页看板，不改订单本身）
+const isPendingDone = o => !!pendingDone[orderUid(o)];
+// 菜品 id -> 分类
+function catOfItem(it){
+  if(!it) return '';
+  const m = menu.find(x => String(x.id) === String(it.id));
+  return (m && m.cat) || it.cat || '';
+}
+// 菜品在点单页「全部」中的顺序（找不到的排最后）
+function menuPos(item){
+  let k = item.id ? menu.findIndex(m => !m.divider && m.id === item.id) : -1;
+  if(k < 0 && item.name) k = menu.findIndex(m => !m.divider && m.name === item.name);
+  return k < 0 ? Infinity : k;
+}
+function isBelegItem(item){
+  const icat = (item && item.cat) || ((menu.find(m => m.id === item.id) || {}).cat) || '';
+  return /beleg/i.test(icat);
+}
+// 订单行显示顺序：其他分类优先，Beleg 排最后（同类内保持菜单顺序）
+function sortItems(items){
+  return (items || []).slice().sort((a, b) => {
+    const d = (isBelegItem(a) ? 1 : 0) - (isBelegItem(b) ? 1 : 0);
+    return d || (menuPos(a) - menuPos(b));
+  });
+}
+const stackSum = st => (st || []).reduce((s, x) => s + (Number(x.price) || 0) * (x.n || 1), 0);
+const stackText = st => (st || []).map(s => `${s.name}×${s.n || 1}` + (Number(s.price) > 0 ? ' +' + eu(Number(s.price) * (s.n || 1)) : '')).join('、');
+const sauceText = ls => (ls || []).map(s => (s.name || s) + (Number(s.price) > 0 ? ' +' + eu(s.price) : '')).join('、');
+// 已提交订单里单行的单价（含蘸料/评论加价；旧订单无 unit 则按菜单 + 加价推算）
+function itemUnit(item){
+  if(Number.isFinite(item.unit)) return item.unit;
+  const dish = menu.find(m => !m.divider && (m.id === item.id || (!item.id && m.name === item.name)))
+            || menu.find(m => !m.divider && m.name === item.name);
+  const base = dish ? Number(dish.price) || 0 : 0;
+  return base
+    + (item.sauces || []).reduce((s, x) => s + (Number(x.price) || 0), 0)
+    + (item.comments || []).reduce((s, x) => s + (Number(x.price) || 0), 0)
+    + stackSum(item.stacks);
+}
+
+// ===================== 渲染 =====================
+function render(){
+  if(lastErr){
+    $('#grid').innerHTML = '';
+    $('#count').textContent = '';
+    $('#empty').className = 'err';
+    $('#empty').style.display = 'block';
+    $('#empty').textContent = t('connErrFull');
+    return;
+  }
+  $('#empty').className = 'empty';
+
+  // 只看「待处理」：订单尚未完成，且本页没标记过「已完成」
+  const list = orders.filter(o => !o.done && !isPendingDone(o));
+  // 按提交时间升序（老单在前，新单在后，与主应用一致）
+  list.sort((a, b) => (Number(a.at) || 0) - (Number(b.at) || 0));
+
+  $('#count').textContent = t('nOrders', list.length);
+
+  if(!list.length){
+    $('#grid').innerHTML = '';
+    $('#empty').style.display = 'block';
+    $('#empty').textContent = t('empty');
+    return;
+  }
+  $('#empty').style.display = 'none';
+
+  $('#grid').innerHTML = list.map(o => {
+    const noRaw = (o.no == null || o.no === '') ? '' : String(o.no);
+    const isTel = /^\d{4}$/.test(noRaw);
+    const no = noRaw === '' ? '' : orderNoText(noRaw);
+    const uid = orderUid(o);
+    const note = o.note ? `<div class="pnote">${esc(o.note)}</div>` : '';
+    const items = sortItems(o.items);
+    const rows = items.map(it => {
+      const cat = catOfItem(it);
+      const bl = /beleg/i.test(cat) ? ' is-beleg' : '';
+      const gv = it.given ? ' given' : '';
+      const ds = it.desc ? `<span class="pdesc">${esc(it.desc)}</span>` : '';
+      const extras = [];
+      if(it.opts && it.opts.length)     extras.push(t('optsPrefix') + it.opts.join(' / '));
+      if(it.sauces && it.sauces.length) extras.push(t('saucesPrefix') + sauceText(it.sauces));
+      if(it.comments && it.comments.length) extras.push(t('commentsPrefix') + sauceText(it.comments));
+      if(it.stacks && it.stacks.length) extras.push(t('stacksPrefix') + stackText(it.stacks));
+      if(it.note) extras.push(t('notePrefix') + it.note);
+      const ext = extras.map(l => `<span class="pext">${esc(l)}</span>`).join('');
+      return `<div class="pitem${bl}${gv}">
+        <span class="pq">${it.q || 1}×</span>
+        <span class="pnm">${esc(it.name || '')}</span>
+        ${cat ? `<span class="pcat">${esc(cat)}</span>` : ''}
+        ${ds}${ext}
+      </div>`;
+    }).join('');
+    return `<div class="pcard ${o.paid ? 'paid' : 'unpaid'}${isTel ? ' is-tel' : ''}" data-uid="${esc(uid)}">
+      <div class="phead"><span class="pno${isTel ? ' htel' : ''}">${esc(no || '—')}</span><span class="ptime">${esc(o.time || '')}</span></div>
+      ${note}${rows}
+      ${isPendingDone(o) ? '' : `<button class="pdone" data-done="${esc(uid)}">${t('markDone')}</button>`}
+    </div>`;
+  }).join('');
+}
+
+// ===================== 详情弹窗：逐条点菜品，「已给客人」画线 =====================
+let dmUid = null;      // 当前打开详情的订单 uid
+
+function openDetail(uid){
+  const o = orders.find(x => orderUid(x) === uid);
+  if(!o) return;
+  dmUid = uid;
+  renderDetail(o);
+  $('#detailModal').classList.add('show');
+}
+function closeDetail(){
+  $('#detailModal').classList.remove('show');
+  dmUid = null;
+}
+function renderDetail(o){
+  const list = sortItems(o.items);
+  const served = list.filter(i => i.given).length;
+  $('#dmTitle').textContent = orderNoText(o.no) || '—';
+  $('#dmSub').textContent = `${o.time || ''} · ${t('servedCount', served, list.length)} · ${t('clickDishTip')}`;
+  $('#dmList').innerHTML = list.map((i, idx) => {
+    const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
+    const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${sauceText(i.sauces)}）</span>` : '';
+    const cmts = i.comments && i.comments.length ? ` <span class="hcmt">（${sauceText(i.comments)}）</span>` : '';
+    const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
+    const note = i.note ? ` <span class="hnote">${esc(t('inlineNote', i.note))}</span>` : '';
+    const isBeleg = isBelegItem(i);
+    const iname = isBeleg ? `<span class="hbeleg">${esc(i.name)}</span>` : esc(i.name);
+    const idesc = i.desc ? (isBeleg ? ` <span class="hbeleg-desc">${esc(i.desc)}</span>` : ' ' + esc(i.desc)) : '';
+    const sum = itemUnit(i) * (i.q || 1);
+    return `<div class="om-line${i.given ? ' given' : ''}" data-i="${idx}">
+      <span class="om-info">${i.q || 1}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}</span>
+      <span class="om-price">${eu(sum)}</span>
+    </div>`;
+  }).join('');
+}
+
+$('#dmList').addEventListener('click', e => {
+  const line = e.target.closest('.om-line');
+  if(!line) return;
+  // 每次点击都从 orders 里重新取（3 秒轮询会替换 orders，避免用到过期引用）
+  const o = orders.find(x => orderUid(x) === dmUid);
+  if(!o) return;
+  const list = sortItems(o.items);
+  const it = list[Number(line.dataset.i)];
+  if(!it) return;
+  it.given = !it.given;      // 已给客人 ←→ 取消
+  renderDetail(o);
+  render();
+  pushOrders();              // 存入本机并同步云端
+});
+
+$('#dmClose').addEventListener('click', closeDetail);
+$('#detailModal').addEventListener('click', e => { if(e.target.id === 'detailModal') closeDetail(); });
+
+// 本页本机标记「已完成」：只在看板上把这张卡移走，不写回订单、不影响主应用和其他设备
+function markPendingDone(uid){
+  const o = orders.find(x => orderUid(x) === uid);
+  if(!o || o.done || isPendingDone(o)) return;
+  pendingDone[uid] = Date.now();
+  savePendingDone();
+  render();
+}
+
+// 点卡片打开详情；点「已完成」按钮则只把卡片从本页移走
+$('#grid').addEventListener('click', e => {
+  const b = e.target.closest('.pdone');
+  if(b){
+    b.disabled = true;
+    markPendingDone(b.dataset.done);
+    return;
+  }
+  const card = e.target.closest('.pcard');
+  if(card) openDetail(card.dataset.uid);
+});
+
+// ===================== 同步（只改「已给客人」，不做付款/完成） =====================
+async function pushOrders(){
+  try{ localStorage.setItem(L_ORDERS, JSON.stringify(orders)); }catch(e){}
+  try{
+    const r = await fetch(API_BASE + '/api/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders })
+    });
+    if(r.ok){
+      const j = await r.json();
+      // 采用服务端合并后的权威结果，保证多设备一致
+      if(j && Array.isArray(j.orders)){
+        orders = j.orders;
+        try{ localStorage.setItem(L_ORDERS, JSON.stringify(orders)); }catch(e){}
+        render();
+      }
+    }
+  }catch(e){ /* 离线时只留本机改动，下次轮询/联网再同步 */ }
+}
+
+// ===================== 语言 / 刷新 =====================
+$('#langZh').addEventListener('click', () => { lang = 'zh'; localStorage.setItem(LANG_KEY, lang); applyLang(); render(); if(dmUid){ const o = orders.find(x => orderUid(x) === dmUid); if(o) renderDetail(o); } });
+$('#langNl').addEventListener('click', () => { lang = 'nl'; localStorage.setItem(LANG_KEY, lang); applyLang(); render(); if(dmUid){ const o = orders.find(x => orderUid(x) === dmUid); if(o) renderDetail(o); } });
+
+document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+
+// ===================== 启动 =====================
+applyLang();
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>
