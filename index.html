@@ -583,12 +583,6 @@
   }
   .admin-empty .big{font-size:46px;opacity:.5;}
 
-  /* 卡片上的「可选」标记 */
-  .card .opt-tag{
-    font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-soft);
-    border-radius:6px;padding:2px 5px;margin-left:5px;vertical-align:1px;
-  }
-
   /* 定制选项弹窗 */
   .modal{
     position:fixed;inset:0;background:rgba(20,22,25,.45);
@@ -965,7 +959,6 @@
   <!-- 订单 -->
   <aside class="order" id="orderPanel">
     <div class="order-head" id="orderHead">
-      <h2 data-i18n="myOrder">我的订单</h2>
       <span class="count" id="orderCount">0 件</span>
       <input id="orderNoInput" class="ono-input" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="订单号码" data-i18n-ph="phOrderNo">
       <div class="spacer"></div>
@@ -1725,10 +1718,9 @@ function renderMenu(){
     if(!b.cards.length) return '';
     const cards = b.cards.map(i=>{
       const q = dishQty(i.id);
-      const hasOpts = (i.opts && i.opts.length) || (i.sauces && i.sauces.length);
       return `<div class="card" data-id="${i.id}">
         ${q?`<span class="in-cart">${q}</span>`:''}
-        <div class="name">${i.name}${hasOpts?`<span class="opt-tag">${tr('optTag')}</span>`:''}</div>
+        <div class="name">${i.name}</div>
         <div class="desc">${i.desc||''}</div>
         <div class="row">
           <span class="price">${eu(i.price)}</span>
@@ -2456,6 +2448,28 @@ $('#saveDish').addEventListener('click', ()=>{
   showToast('✅', tr('tDishAdded'), `${emoji} ${name} · ${eu(price)}`);
 });
 
+// 点击音效（Web Audio 现场合成，无需外部音频文件）
+let audioCtx = null;
+function playClick(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    if(!audioCtx) audioCtx = new AC();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(880, t0);
+    osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.06);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + 0.09);
+  }catch(e){}
+}
+
 // 通用提示
 let toastTimer;
 function showToast(ico, title, sub){
@@ -2616,7 +2630,7 @@ $('#history').addEventListener('click', e=>{
     if(o){
       o.paid = !o.paid;
       saveOrders(); renderHistory();
-      showToast(o.paid?'💰':'↩️', o.paid?tr('tPaidMarked'):tr('tPaidUnmarked'), tr('orderNoLabel', o.no));
+      playClick();
     }
     return;
   }
@@ -2630,8 +2644,7 @@ $('#history').addEventListener('click', e=>{
     if(o.done){ o.doneAt = nextClickAt(); delete o.backAt; }
     else { delete o.doneAt; o.backAt = nextClickAt(); }
     saveOrders(); renderHistory();
-    showToast(o.done?'✅':'↩️', o.done?tr('tOrderDone'):tr('tBackToPending'),
-      tr('orderNoMoved', o.no, o.done?tr('doneTab'):tr('pendingTab')));
+    playClick();
     return;
   }
   const editBtn = e.target.closest('[data-edit]');
@@ -2732,7 +2745,10 @@ function submitOrder(paid){
       return;
     }
     if(o){
-      if(changed) o.no = wanted;
+      if(changed){
+        o.no = wanted;
+        o.src = 'manual';   // 手改成的新号（例如电话号）不再参与自动编号，否则下一次新单会「尾随」它生成号码
+      }
       o.items = items; o.count = n; o.total = t; o.time = time; o.note = orderNote.trim();
       if(paid) o.paid = true;                    // 点「已付款下单」时才改为已付款，普通保存不动付款状态
       delete o.doneAt; delete o.backAt;
@@ -2754,7 +2770,10 @@ function submitOrder(paid){
       no = wanted; src = 'manual';
     } else {
       const used = new Set(orders.map(o=>String(o.no)));
-      let cand = orders.filter(o=>o.src !== 'manual').reduce((mx,o)=>Math.max(mx, Number(o.no)||0), 0);
+      // 自动编号只在「自动单」里取最大号 +1：手填号不参与；
+      // 4 位数字是电话单，也排除（老数据里可能残留在自动序列中，否则新单会变成「电话号+1」）
+      const isSeq = o => o.src !== 'manual' && !/^\d{4}$/.test(String(o.no));
+      let cand = orders.filter(isSeq).reduce((mx,o)=>Math.max(mx, Number(o.no)||0), 0);
       while(used.has(String(cand + 1))) cand++;
       no = cand + 1; src = 'auto';
     }
