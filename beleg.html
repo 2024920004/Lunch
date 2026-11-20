@@ -67,6 +67,15 @@
   }
   .ocard .odone:active{opacity:.85;}
   .ocard .odone:disabled{opacity:.6; cursor:not-allowed;}
+  /* 撤回：在「全部」里把误点完成的单放回「Te maken」 */
+  .ocard .oundo{
+    display:block; width:100%; margin-top:10px;
+    border:1px solid var(--line); background:#fff; color:var(--sub);
+    font-family:inherit; font-size:14px; font-weight:800;
+    padding:8px 10px; border-radius:9px; cursor:pointer;
+  }
+  .ocard .oundo:active{opacity:.85;}
+  .ocard .oundo:disabled{opacity:.6; cursor:not-allowed;}
   .item{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px dashed var(--line); line-height:1.6;}
   .item:first-of-type{border-top:0;}
   .item .q{font-weight:800; color:var(--txt); font-size:14px; min-width:26px;}
@@ -114,12 +123,12 @@ const I18N = {
         connOk:'已连接', connOffline:'离线·本机数据', connErr:'未连接',
         connErrFull:'连接失败：读不到数据。请在店里那台跑服务的机器上打开本页面。',
         optsPrefix:'可选：', saucesPrefix:'蘸料：', commentsPrefix:'评论：', stacksPrefix:'可叠加：', notePrefix:'备注：',
-        markDone:'已完成', nOrders:'{0} 单', navPending:'待处理订单' },
+        markDone:'已完成', undo:'撤回', nOrders:'{0} 单', navPending:'待处理订单' },
   nl: { title:'Overzicht', tabPending:'Te maken', tabAll:'Alles', empty:'Geen Beleg / plain bestellingen',
         connOk:'Verbonden', connOffline:'Offline · lokaal', connErr:'Niet verbonden',
         connErrFull:'Verbinding mislukt: geen gegevens. Open deze pagina op het toestel dat de server draait.',
         optsPrefix:'Keuzes: ', saucesPrefix:'Sausen: ', commentsPrefix:'Opmerkingen: ', stacksPrefix:'Stapelbaar: ', notePrefix:'Opmerking: ',
-        markDone:'Afgerond', nOrders:'{0} bestellingen', navPending:'Openstaand' }
+        markDone:'Afgerond', undo:'Terugzetten', nOrders:'{0} bestellingen', navPending:'Openstaand' }
 };
 function t(k, ...a){ let s = (I18N[lang] && I18N[lang][k]) || (I18N.zh[k]) || k; a.forEach((v,i)=>{ s = s.replace('{'+i+'}', v); }); return s; }
 
@@ -139,7 +148,8 @@ function savePrepDone(){ try{ localStorage.setItem(L_PREP_DONE, JSON.stringify(p
 function prunePrepDone(){
   const now = Date.now(), MAX = 2 * 24 * 3600 * 1000;
   let changed = false;
-  Object.keys(prepDone).forEach(k => { if(now - prepDone[k] > MAX){ delete prepDone[k]; changed = true; } });
+  // 值带符号：正 = 完成时间，负 = 撤回时间；都按绝对值判断是否过期
+  Object.keys(prepDone).forEach(k => { if(now - Math.abs(Number(prepDone[k]) || 0) > MAX){ delete prepDone[k]; changed = true; } });
   if(changed) savePrepDone();
 }
 
@@ -225,8 +235,14 @@ function orderUid(o){
   o.uid = 'u' + String(o.no) + '_' + (Number(o.at) || 0);
   return o.uid;
 }
-// 备料单本机的「已完成」（不影响订单本身）
-const isPrepDone = o => !!prepDone[orderUid(o)];
+// 备料单的「已完成」（不影响订单本身）。值 > 0 = 已完成；负数 = 已撤回，视为未完成
+const isPrepDone = o => Number(prepDone[orderUid(o)]) > 0;
+// 「全部」列表排序用：本页点「已完成」的时间；主应用完成的单退回它的点击时间/提交时间
+function doneAtOf(o){
+  const v = Number(prepDone[orderUid(o)]);
+  if(v > 0) return v;
+  return Number(o.doneAt) || Number(o.at) || 0;
+}
 
 const eu = n => '€' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
 // 蘸料/评论展示文本：名称 + 加价（有价才显示）
@@ -262,13 +278,16 @@ function render(){
   // 只保留「Beleg」「plain」分类的菜品行，且订单至少剩一行才显示
   const list = [];
   for(const o of orders){
-    // 待处理列表：订单本身已完成，或本机备料单已标记完成，都不再显示
-    if(!showAll && (o.done || isPrepDone(o))) continue;
+    const done = o.done || isPrepDone(o);
+    // 「Te maken」只看还没做的；「全部」只看已经做完的
+    if(showAll ? !done : done) continue;
     const items = (o.items || []).filter(it => isTarget(catOfItem(it)));
     if(items.length) list.push({ o, items });
   }
-  // 按提交时间升序（老单在前，新单在后，与主应用一致）
-  list.sort((a, b) => (Number(a.o.at) || 0) - (Number(b.o.at) || 0));
+  // 「Te maken」按提交时间升序（老单在前，新单在后）；
+  // 「全部」按在 Te maken 上点「已完成」的先后排序 —— 后点完成的排在最前
+  if(showAll) list.sort((a, b) => doneAtOf(b.o) - doneAtOf(a.o));
+  else        list.sort((a, b) => (Number(a.o.at) || 0) - (Number(b.o.at) || 0));
 
   $('#count').textContent = t('nOrders', list.length);
 
@@ -305,7 +324,10 @@ function render(){
     return `<div class="ocard ${o.paid ? 'paid' : 'unpaid'}${isTel ? ' is-tel' : ''}" data-uid="${esc(uid)}">
       <div class="ohead"><span class="ono${isTel ? ' htel' : ''}">${esc(no || '—')}</span><span class="otime">${esc(o.time || '')}</span></div>
       ${note}${rows}
-      ${(o.done || isPrepDone(o)) ? '' : `<button class="odone" data-done="${esc(uid)}">${t('markDone')}</button>`}</div>`;
+      ${o.done ? ''
+        : (isPrepDone(o)
+            ? (showAll ? `<button class="oundo" data-undo="${esc(uid)}">${t('undo')}</button>` : '')
+            : `<button class="odone" data-done="${esc(uid)}">${t('markDone')}</button>`)}</div>`;
   }).join('');
 }
 
@@ -317,6 +339,16 @@ function markPrepDone(uid){
   const o = orders.find(x => orderUid(x) === uid);
   if(!o || o.done || isPrepDone(o)) return;
   prepDone[uid] = Date.now();
+  savePrepDone();
+  render();
+  pushMarks();
+}
+
+// 撤回「已完成」：把这张单放回「Te maken」。写成负时间戳，云端按绝对值取最新操作，
+// 因此撤回后其它设备也会同步取消（而不是被别人的并集推送又复活）
+function unmarkPrepDone(uid){
+  if(!(Number(prepDone[uid]) > 0)) return;
+  prepDone[uid] = -Date.now();
   savePrepDone();
   render();
   pushMarks();
@@ -343,10 +375,10 @@ async function pushMarks(){
 }
 
 $('#grid').addEventListener('click', e=>{
-  const b = e.target.closest('.odone');
-  if(!b) return;
-  b.disabled = true;
-  markPrepDone(b.dataset.done);
+  const d = e.target.closest('.odone');
+  if(d){ d.disabled = true; markPrepDone(d.dataset.done); return; }
+  const u = e.target.closest('.oundo');
+  if(u){ u.disabled = true; unmarkPrepDone(u.dataset.undo); return; }
 });
 
 $('#tabPending').addEventListener('click', () => { showAll = false; $('#tabPending').classList.add('active'); $('#tabAll').classList.remove('active'); render(); });

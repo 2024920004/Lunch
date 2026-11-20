@@ -68,6 +68,8 @@ function mergeOrders(cur, incoming, tomb) {
 
 // 「已完成」标记（备料单 / 待处理看板）：各设备各点各的单，所以按 uid 取并集而不是整段覆盖，
 // 避免后点的设备把先点的那批标记冲掉。标记超过 2 天自动清掉，避免无限增长（订单都是当天用完）。
+// 取值带符号：正数 = 标记完成的时间；负数 = 撤回完成的时间（撤回后要能在所有设备上真正取消，
+// 若单纯删除会被别的设备的并集推送复活，所以按「绝对值最大的那次操作」取胜，即最新操作生效）。
 const DONE_MAX_AGE = 2 * 24 * 3600 * 1000;
 function mergeMarks(cur, incoming) {
   const now = Date.now();
@@ -76,8 +78,8 @@ function mergeMarks(cur, incoming) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) return;
     for (const k of Object.keys(v)) {
       const at = Number(v[k]) || 0;
-      if (!at || now - at > DONE_MAX_AGE) continue;
-      if (!out[k] || out[k] < at) out[k] = at;
+      if (!at || now - Math.abs(at) > DONE_MAX_AGE) continue;
+      if (!out[k] || Math.abs(out[k]) < Math.abs(at)) out[k] = at;
     }
   };
   put(cur); put(incoming);

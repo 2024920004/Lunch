@@ -128,6 +128,8 @@
   .hitem .hitems .hbeleg-desc{color:#6d28d9;font-weight:800;}
   /* 已给客人：整行文字中间画线并弱化 */
   .hitem .hitems .hline.given{text-decoration:line-through;text-decoration-thickness:2px;opacity:.6;}
+  /* 备料单已完成的菜：整行信息末尾（价格前）绿色 ✔️ */
+  .hitem .hitems .hline .hprep{flex-shrink:0;margin-left:5px;font-size:12.5px;color:#16a34a;font-weight:800;}
   .hitem .hitems .hprice{flex-shrink:0;text-align:right;min-width:48px;color:var(--accent);font-weight:800;}
   /* 整单备注：与单品备注区分（橙底，代表整单） */
   .hitem .hordernote{
@@ -174,10 +176,9 @@
     content:var(--txt-done);margin-left:7px;font-size:10.5px;font-weight:800;
     color:var(--ok);background:#e6f6ec;border-radius:5px;padding:2px 5px;
   }
-  /* 4 位数字单号（电话单）：显示为红色「Tel 1234」 */
-  .history-body[data-tab="pending"] .hitem .hno.htel{color:#e5484d;}
-  /* 电话单：整张卡片浅红底，便于一眼分辨 */
-  .history-body[data-tab="pending"] .hitem.is-tel{background:#fdf0f0;border-color:#f3c2c4;}
+  /* 待处理卡片按付款状态染色：整卡浅色底 + 左侧色条（未付款=红，已付款=绿） */
+  .history-body[data-tab="pending"] .hitem.is-unpaid{background:#fdf0f0;border-color:#f3c2c4;border-left:5px solid #e5484d;}
+  .history-body[data-tab="pending"] .hitem.is-paid{background:#eefaf3;border-color:#bfe6d2;border-left:5px solid #16a34a;}
   /* 待处理卡片：整卡文字放大一点、加粗一点，便于一眼看清 */
   .history-body[data-tab="pending"] .hitem .hno{font-size:17px;font-weight:900;}
   .history-body[data-tab="pending"] .hitem .htime{font-size:13px;font-weight:800;}
@@ -942,6 +943,7 @@
     <div class="history-head">
       <div class="htabs" id="htabs">
         <button class="htab active" data-tab="pending"><span data-i18n="pendingTab">待处理</span><span class="hnum" id="tabPending">0</span></button>
+        <button class="htab" data-tab="phone"><span data-i18n="phoneTab">电话</span><span class="hnum" id="tabPhone">0</span></button>
         <button class="htab" data-tab="done"><span data-i18n="doneTab">已完成</span><span class="hnum" id="tabDone">0</span></button>
       </div>
       <div class="spacer"></div>
@@ -1183,8 +1185,9 @@ const I18N = {
     logout:'退出', roleAdmin:'管理员', roleUser:'普通用户',
     navOrder:'点单', navMenu:'菜品管理', navUsers:'用户管理', navBeleg:'备料单', navPending:'待处理',
     cloudConnecting:'连接中…', cloudOnline:'云端已连接', cloudOffline:'离线（仅本机）',
-    pendingTab:'待处理', doneTab:'已完成', clear:'清空', clearDone:'清空已完成',
+    pendingTab:'待处理', doneTab:'已完成', phoneTab:'电话', clear:'清空', clearDone:'清空已完成',
     emptyPending:'还没有已提交的订单', emptyPendingSub:'提交后会排在最下面',
+    emptyPhone:'还没有电话订单', emptyPhoneSub:'4 位号码的订单会显示在这里',
     emptyDone:'还没有已完成的订单', emptyDoneSub:'在「待处理」里点一下订单就算完成',
     editBtn:'修改', itemUnit:'件',
     close:'关闭', clickDishTip:'点击菜品画线 = 已给客人', servedCount:'已给 {0}/{1}',
@@ -1272,8 +1275,9 @@ const I18N = {
     logout:'Uitloggen', roleAdmin:'Beheerder', roleUser:'Gebruiker',
     navOrder:'Bestellen', navMenu:'Menu beheer', navUsers:'Gebruikers', navBeleg:'Overzicht', navPending:'Openstaand',
     cloudConnecting:'Verbinden…', cloudOnline:'Cloud verbonden', cloudOffline:'Offline (alleen lokaal)',
-    pendingTab:'Open', doneTab:'Afgerond', clear:'Wissen', clearDone:'Afgeronde wissen',
+    pendingTab:'Open', doneTab:'Afgerond', phoneTab:'Telefoon', clear:'Wissen', clearDone:'Afgeronde wissen',
     emptyPending:'Nog geen bestellingen', emptyPendingSub:'Verschijnen onderaan na verzenden',
+    emptyPhone:'Nog geen telefoonbestellingen', emptyPhoneSub:'Bestellingen met een 4-cijferig nummer staan hier',
     emptyDone:'Nog geen afgeronde bestellingen', emptyDoneSub:'Tik in "Open" op een bestelling om af te ronden',
     editBtn:'Aanpassen', itemUnit:'st',
     close:'Sluiten', clickDishTip:'Tik op een gerecht om te strepen = geserveerd', servedCount:'Geserveerd {0}/{1}',
@@ -1536,6 +1540,14 @@ function isBelegItem(item){
   return /beleg/i.test(icat);
 }
 
+// 备料单（beleg 页）覆盖的菜品分类：Beleg / plain。订单项存的分类或菜单里的分类任一命中即算，
+// 与 beleg.html 的筛选保持一致（订单可能是改分类前下的，两边都要能识别）
+function isPrepItem(item){
+  const icat = (item && item.cat) || '';
+  const mcat = ((menu.find(m=>m.id===item.id)||{}).cat) || '';
+  return /beleg|plain/i.test(icat) || /beleg|plain/i.test(mcat);
+}
+
 // 订单行显示顺序：其他分类优先，Beleg 分类排到最后（同类内保持菜单顺序）
 function sortItems(items){
   return items.slice().sort((a,b)=>{
@@ -1593,37 +1605,50 @@ function itemUnit(item){
 
 // 已提交订单：待处理 / 已完成
 let historyTab = 'pending';
+// 备料单（beleg 页）的「已完成」标记：{ 订单uid: 标记时间 }，正=完成、负=撤回；只读，用于显示绿 ✔️
+let prepDone = {};
 
 // 「已完成」按点击先后排序（后点的排前面）；「待处理」里被退回的订单同样置顶
 let lastClickAt = 0;
 const nextClickAt = () => (lastClickAt = Math.max(Date.now(), lastClickAt + 1));
 
+// 4 位数字单号视为电话单（Tel），显示为「Tel 1234」；其余为普通单
+function isTelNo(no){ return /^\d{4}$/.test(String(no == null ? '' : no)); }
+
 // 渲染已提交订单
 function renderHistory(){
   const done = orders.filter(o=>o.done);
   const pend = orders.filter(o=>!o.done);
-  $('#tabPending').textContent = pend.length;
+  // 未付款的电话单（4 位号）单独显示在「电话」标签；电话单一旦付款就进入「待处理」待制作队列
+  const phone = pend.filter(o=>isTelNo(o.no) && !o.paid);
+  const open = pend.filter(o=>!isTelNo(o.no) || o.paid);
+  $('#tabPending').textContent = open.length;
+  $('#tabPhone').textContent = phone.length;
   $('#tabDone').textContent = done.length;
   document.querySelectorAll('#htabs .htab').forEach(b=>
     b.classList.toggle('active', b.dataset.tab===historyTab));
-  $('#history').dataset.tab = historyTab;
+  // 「电话」标签复用「待处理」的卡片样式（染色 + 放大字号），因此非已完成一律按 pending 渲染
+  $('#history').dataset.tab = historyTab==='done' ? 'done' : 'pending';
   $('#clearHistory').textContent = historyTab==='done' ? tr('clearDone') : tr('clear');
 
   // 已完成：按点击完成的时间，后点的在前
-  // 待处理：被退回的按退回点击先后置顶；其余严格按提交先后（旧单在前、新单永远排在最下面），与单号大小无关
+  // 待处理 / 电话：被退回的按退回点击先后置顶；其余严格按提交先后（旧单在前、新单永远排在最下面），与单号大小无关
+  const src = historyTab==='done' ? done : (historyTab==='phone' ? phone : open);
   const list = historyTab==='done'
-    ? done.slice().sort((a,b)=>(b.doneAt||0)-(a.doneAt||0))
-    : pend.slice().sort((a,b)=>{
+    ? src.slice().sort((a,b)=>(b.doneAt||0)-(a.doneAt||0))
+    : src.slice().sort((a,b)=>{
         const ra = a.backAt ? 0 : 1, rb = b.backAt ? 0 : 1;
         if(ra !== rb) return ra - rb;                       // 退回的排在最前
         if(a.backAt && b.backAt) return b.backAt - a.backAt; // 退回的按点击先后（后点的在前）
         return (a.at||0) - (b.at||0)                         // 其余按提交先后升序 → 新单在末尾
             || (Number(a.no)||0) - (Number(b.no)||0);        // 老数据没有提交时间，退回按单号
       });
-  const newestUid = (historyTab==='pending' && list.length) ? orderUid(list[list.length-1]) : null;
-  const emptyText = historyTab==='done' ? tr('emptyDone') : tr('emptyPending');
-  const emptySub  = historyTab==='done' ? tr('emptyDoneSub') : tr('emptyPendingSub');
+  const newestUid = (historyTab!=='done' && list.length) ? orderUid(list[list.length-1]) : null;
+  const emptyText = historyTab==='done' ? tr('emptyDone') : (historyTab==='phone' ? tr('emptyPhone') : tr('emptyPending'));
+  const emptySub  = historyTab==='done' ? tr('emptyDoneSub') : (historyTab==='phone' ? tr('emptyPhoneSub') : tr('emptyPendingSub'));
   $('#history').innerHTML = list.length ? list.map((o,idx)=>{
+    // 该单已在 beleg 页点「完成」（prepDone 正值）→ 其 Beleg/plain 菜品行显示绿 ✔️
+    const prepIsDone = Number(prepDone[orderUid(o)]) > 0;
     const items = sortItems(o.items).map(i=>{
       const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
       const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${i.sauces.map(s=>s.name+(Number(s.price)>0?`+${eu(s.price)}`:'')).join('+')}）</span>` : '';
@@ -1635,16 +1660,19 @@ function renderHistory(){
       const isBeleg = isBelegItem(i);
       const iname = isBeleg ? `<span class="hbeleg">${i.name}</span>` : i.name;
       const idesc = i.desc ? (isBeleg ? ` <span class="hbeleg-desc">${i.desc}</span>` : ' '+i.desc) : '';
-      return `<div class="hline${i.given?' given':''}"><span class="hinfo">${i.q}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}</span><span class="hprice">${eu(sum)}</span></div>`;
+      const tick = (prepIsDone && isPrepItem(i)) ? '<span class="hprep">✔️</span>' : '';
+      return `<div class="hline${i.given?' given':''}"><span class="hinfo">${i.q}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}${tick}</span><span class="hprice">${eu(sum)}</span></div>`;
     }).join('');
-    // 4 位数字单号视为电话单，显示为「Tel 1234」并标红
+    // 4 位数字单号视为电话单，显示为「Tel 1234」
     const noRaw = String(o.no);
-    const isTel = /^\d{4}$/.test(noRaw);
+    const isTel = isTelNo(noRaw);
     // 「已完成」需先「标记付款」；「退回待处理」（o.done）不受限
     const canDone = o.done || o.paid;
-    return `<div class="hitem ${historyTab==='pending' && newestUid!=null && orderUid(o)===newestUid ? 'newest':''}${isTel?' is-tel':''}" data-uid="${orderUid(o)}">
+    // 待处理 / 电话卡片按付款状态染色：未付款=红，已付款=绿
+    const payCls = historyTab!=='done' ? (o.paid?' is-paid':' is-unpaid') : '';
+    return `<div class="hitem ${historyTab!=='done' && newestUid!=null && orderUid(o)===newestUid ? 'newest':''}${payCls}" data-uid="${orderUid(o)}">
       <div class="hrow">
-        <span class="hno${isTel?' htel':''}">${isTel?`Tel ${noRaw}`:noRaw}</span>
+        <span class="hno">${isTel?`Tel ${noRaw}`:noRaw}</span>
         <span class="htime">${o.time}</span>
       </div>
       <div class="hitems">${items}</div>
@@ -1652,7 +1680,7 @@ function renderHistory(){
       <div class="hrow">
         <span class="hcount">${o.count} ${tr('itemUnit')}</span>
         <span class="hright">
-          ${historyTab==='pending' ? `<button class="hedit" data-edit="${orderUid(o)}">${tr('editBtn')}</button>` : ''}
+          ${historyTab!=='done' ? `<button class="hedit" data-edit="${orderUid(o)}">${tr('editBtn')}</button>` : ''}
           <span class="htotal">${eu(o.total)}</span>
         </span>
       </div>
@@ -2651,7 +2679,7 @@ $('#history').addEventListener('click', e=>{
   if(editBtn){ editOrder(editBtn.dataset.edit); return; }   // 「修改」
   // 点击整张卡片 → 打开订单详情（仅待处理），逐条点菜品画线
   const card = e.target.closest('.hitem');
-  if(card && historyTab==='pending') openOrderModal(card.dataset.uid);
+  if(card && historyTab!=='done') openOrderModal(card.dataset.uid);
 });
 
 // 把待处理订单重新载入点单购物车进行修改（改完点「保存修改」替换原单）
@@ -2700,7 +2728,13 @@ $('#editCancel').addEventListener('click', ()=>{
 // 清空：清空当前标签页的订单
 $('#clearHistory').addEventListener('click', ()=>{
   if(!orders.length) return;
-  const keep = o => historyTab==='done' ? !o.done : o.done;
+  // 「已完成」清空已完成；「电话」只清未付款的电话单；「待处理」清其余未完成单（含已付款的电话单）
+  const keep = o => {
+    if(historyTab==='done') return !o.done;
+    if(o.done) return true;
+    const inPhone = isTelNo(o.no) && !o.paid;
+    return historyTab==='phone' ? !inPhone : inPhone;
+  };
   const removed = orders.filter(o=>!keep(o));
   orders = orders.filter(keep);
   saveOrders(removed); renderHistory();
@@ -2989,7 +3023,7 @@ async function cloudFlush(name){
 }
 // 把云端数据应用到本机（只应用没在本地编辑、且确实变化的集合）
 function applyRemote(s){
-  let menuCh=false, catsCh=false, usersCh=false, ordersCh=false;
+  let menuCh=false, catsCh=false, usersCh=false, ordersCh=false, prepCh=false;
   if(Array.isArray(s.cats) && !dirty.cats && JSON.stringify(s.cats)!==snap.cats){
     cats = s.cats; snap.cats = JSON.stringify(cats); catsCh = true;
   }
@@ -3015,8 +3049,13 @@ function applyRemote(s){
     }
     snap.orders = JSON.stringify(orders); ordersCh = true;
   }
+  // 备料单「已完成」标记（beleg 页写入云端）：变了就重渲染订单卡片，把绿 ✔️ 显示出来
+  if(s.prepDone && typeof s.prepDone === 'object' && !Array.isArray(s.prepDone) && JSON.stringify(s.prepDone)!==snap.prepDone){
+    prepDone = s.prepDone; snap.prepDone = JSON.stringify(prepDone); prepCh = true;
+  }
   if(menuCh || catsCh){ renderCats(); renderMenu(); renderAdmin(); }
   if(ordersCh){ renderHistory(); renderOrder(); refreshOrderModal(); }
+  else if(prepCh){ renderHistory(); }
   if(usersCh && document.getElementById('view-users').classList.contains('active')) renderUsers();
 }
 async function cloudGet(){
@@ -3058,9 +3097,10 @@ async function cloudPoll(){
     let flushed = false;
     for(const c of COLLS){ if(dirty[c]){ await cloudFlush(c); flushed = true; } }
     if(flushed) s = await cloudGet();
-    const rev = Number(s.rev) || 0;
-    if(rev === cloudRev) return;
-    cloudRev = rev;
+    // 每次都应用一遍：applyRemote 内部按 JSON 快照比对，只有真正变化的集合才重渲染。
+    // 不能因 rev 相同就跳过 —— 本机自己 PUT 后 cloudRev 已是最新（可能已含别处写入的 prepDone），
+    // 若提前 return，备料单的「已完成」标记会一直应用不上，绿 ✔️ 不出现。
+    cloudRev = Number(s.rev) || 0;
     applyRemote(s);
   }catch(e){ setCloud(false); }
 }
