@@ -522,12 +522,30 @@ async function pushOrders(){
 $('#langZh').addEventListener('click', () => { lang = 'zh'; localStorage.setItem(LANG_KEY, lang); applyLang(); render(); if(dmUid){ const o = orders.find(x => orderUid(x) === dmUid); if(o) renderDetail(o); } });
 $('#langNl').addEventListener('click', () => { lang = 'nl'; localStorage.setItem(LANG_KEY, lang); applyLang(); render(); if(dmUid){ const o = orders.find(x => orderUid(x) === dmUid); if(o) renderDetail(o); } });
 
-document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+document.addEventListener('visibilitychange', () => { if(!document.hidden) reload(); });
 
 // ===================== 启动 =====================
+// 取数去重：3 秒轮询与实时推送可能同时到达，避免并发 load 造成闪烁/竞态；在途时只标记，结束再补一次
+let loadBusy = false, loadAgain = false;
+async function reload(){
+  if(loadBusy){ loadAgain = true; return; }
+  loadBusy = true;
+  try{ await load(); } finally{ loadBusy = false; if(loadAgain){ loadAgain = false; reload(); } }
+}
+// 实时推送（SSE）：别的设备一改动，后端立刻推来版本号 → 立即刷新，几乎零延迟；断线自动重连，期间靠轮询兜底
+function startEvents(){
+  if(!('EventSource' in window)) return;
+  try{
+    const es = new EventSource(API_BASE + '/api/events');
+    es.onmessage = () => { if(!document.hidden) reload(); };
+    es.onerror = () => {};
+  }catch(e){ /* 不支持就纯靠轮询 */ }
+}
+
 applyLang();
-load();
-setInterval(load, 3000);
+reload();
+startEvents();
+setInterval(reload, 3000);
 </script>
 </body>
 </html>

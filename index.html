@@ -1615,6 +1615,71 @@ const nextClickAt = () => (lastClickAt = Math.max(Date.now(), lastClickAt + 1));
 // 4 位数字单号视为电话单（Tel），显示为「Tel 1234」；其余为普通单
 function isTelNo(no){ return /^\d{4}$/.test(String(no == null ? '' : no)); }
 
+// 一张订单卡片的 HTML。整表渲染（renderHistory）与局部重渲染（refreshCard）共用，
+// 保证两条路径画出来的卡片完全一致。
+function histCardHtml(o, newestUid){
+  // 该单已在 beleg 页点「完成」（prepDone 正值）→ 其 Beleg/plain 菜品行显示绿 ✔️
+  const prepIsDone = Number(prepDone[orderUid(o)]) > 0;
+  const items = sortItems(o.items).map(i=>{
+    const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
+    const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${i.sauces.map(s=>s.name+(Number(s.price)>0?`+${eu(s.price)}`:'')).join('+')}）</span>` : '';
+    const cmts = i.comments && i.comments.length ? ` <span class="hcmt">（${i.comments.map(c=>c.name+(Number(c.price)>0?`+${eu(c.price)}`:'')).join('+')}）</span>` : '';
+    const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
+    const note = i.note ? ` <span class="hnote">${tr('inlineNote', i.note)}</span>` : '';
+    const sum = itemUnit(i) * (i.q||1);
+    // Beleg 分类的菜名与简介：单独着色，方便在订单里一眼区分
+    const isBeleg = isBelegItem(i);
+    const iname = isBeleg ? `<span class="hbeleg">${i.name}</span>` : i.name;
+    const idesc = i.desc ? (isBeleg ? ` <span class="hbeleg-desc">${i.desc}</span>` : ' '+i.desc) : '';
+    const tick = (prepIsDone && isPrepItem(i)) ? '<span class="hprep">✔️</span>' : '';
+    return `<div class="hline${i.given?' given':''}"><span class="hinfo">${i.q}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}${tick}</span><span class="hprice">${eu(sum)}</span></div>`;
+  }).join('');
+  // 4 位数字单号视为电话单，显示为「Tel 1234」
+  const noRaw = String(o.no);
+  const isTel = isTelNo(noRaw);
+  // 「已完成」需先「标记付款」；「退回待处理」（o.done）不受限
+  const canDone = o.done || o.paid;
+  // 待处理 / 电话卡片按付款状态染色：未付款=红，已付款=绿
+  const payCls = historyTab!=='done' ? (o.paid?' is-paid':' is-unpaid') : '';
+  return `<div class="hitem ${historyTab!=='done' && newestUid!=null && orderUid(o)===newestUid ? 'newest':''}${payCls}" data-uid="${orderUid(o)}">
+      <div class="hrow">
+        <span class="hno">${isTel?`Tel ${noRaw}`:noRaw}</span>
+        <span class="htime">${o.time}</span>
+      </div>
+      <div class="hitems">${items}</div>
+      ${o.note ? `<div class="hordernote">📝 ${o.note}</div>` : ''}
+      <div class="hrow">
+        <span class="hcount">${o.count} ${tr('itemUnit')}</span>
+        <span class="hright">
+          ${historyTab!=='done' ? `<button class="hedit" data-edit="${orderUid(o)}">${tr('editBtn')}</button>` : ''}
+          <span class="htotal">${eu(o.total)}</span>
+        </span>
+      </div>
+      <div class="hacts">
+        <button class="hpay ${o.paid?'on':''}" data-pay="${orderUid(o)}">${o.paid?tr('paid'):tr('markPaid')}</button>
+        <button class="hdone" data-done="${orderUid(o)}"${canDone?'':' disabled title="'+tr('tNeedPaid')+'"'}>${o.done?tr('undoDone'):tr('doneBtn')}</button>
+      </div>
+    </div>`;
+}
+
+// 该单是否属于当前标签：局部重渲染后归属会变（如电话单付款后转入待处理）时就退回整表渲染
+function cardInTab(o){
+  if(historyTab==='done') return !!o.done;
+  if(o.done) return false;
+  if(historyTab==='phone') return isTelNo(o.no) && !o.paid;
+  return !isTelNo(o.no) || o.paid;
+}
+
+// 局部重渲染：只替换一张订单卡（高频点击时避免整表重排，减少低端机卡顿）。
+// 该单不在当前标签、或卡片已不在屏上时，退回整表渲染兜底。
+function refreshCard(uid){
+  const o = orders.find(x=>orderUid(x)===uid);
+  const el = document.querySelector('#history .hitem[data-uid="'+uid+'"]');
+  if(!o || !el || !cardInTab(o)){ renderHistory(); return; }
+  const nw = document.querySelector('#history .hitem.newest');
+  el.outerHTML = histCardHtml(o, nw ? nw.dataset.uid : null);
+}
+
 // 渲染已提交订单
 function renderHistory(){
   const done = orders.filter(o=>o.done);
@@ -1646,50 +1711,9 @@ function renderHistory(){
   const newestUid = (historyTab!=='done' && list.length) ? orderUid(list[list.length-1]) : null;
   const emptyText = historyTab==='done' ? tr('emptyDone') : (historyTab==='phone' ? tr('emptyPhone') : tr('emptyPending'));
   const emptySub  = historyTab==='done' ? tr('emptyDoneSub') : (historyTab==='phone' ? tr('emptyPhoneSub') : tr('emptyPendingSub'));
-  $('#history').innerHTML = list.length ? list.map((o,idx)=>{
-    // 该单已在 beleg 页点「完成」（prepDone 正值）→ 其 Beleg/plain 菜品行显示绿 ✔️
-    const prepIsDone = Number(prepDone[orderUid(o)]) > 0;
-    const items = sortItems(o.items).map(i=>{
-      const opts = i.opts && i.opts.length ? ` <span class="hopt">（${i.opts.join('、')}）</span>` : '';
-      const sauces = i.sauces && i.sauces.length ? ` <span class="hsauce">（${i.sauces.map(s=>s.name+(Number(s.price)>0?`+${eu(s.price)}`:'')).join('+')}）</span>` : '';
-      const cmts = i.comments && i.comments.length ? ` <span class="hcmt">（${i.comments.map(c=>c.name+(Number(c.price)>0?`+${eu(c.price)}`:'')).join('+')}）</span>` : '';
-      const stks = i.stacks && i.stacks.length ? ` <span class="hstack">（${stackText(i.stacks)}）</span>` : '';
-      const note = i.note ? ` <span class="hnote">${tr('inlineNote', i.note)}</span>` : '';
-      const sum = itemUnit(i) * (i.q||1);
-      // Beleg 分类的菜名与简介：单独着色，方便在订单里一眼区分
-      const isBeleg = isBelegItem(i);
-      const iname = isBeleg ? `<span class="hbeleg">${i.name}</span>` : i.name;
-      const idesc = i.desc ? (isBeleg ? ` <span class="hbeleg-desc">${i.desc}</span>` : ' '+i.desc) : '';
-      const tick = (prepIsDone && isPrepItem(i)) ? '<span class="hprep">✔️</span>' : '';
-      return `<div class="hline${i.given?' given':''}"><span class="hinfo">${i.q}x ${iname}${idesc}${opts}${sauces}${cmts}${stks}${note}${tick}</span><span class="hprice">${eu(sum)}</span></div>`;
-    }).join('');
-    // 4 位数字单号视为电话单，显示为「Tel 1234」
-    const noRaw = String(o.no);
-    const isTel = isTelNo(noRaw);
-    // 「已完成」需先「标记付款」；「退回待处理」（o.done）不受限
-    const canDone = o.done || o.paid;
-    // 待处理 / 电话卡片按付款状态染色：未付款=红，已付款=绿
-    const payCls = historyTab!=='done' ? (o.paid?' is-paid':' is-unpaid') : '';
-    return `<div class="hitem ${historyTab!=='done' && newestUid!=null && orderUid(o)===newestUid ? 'newest':''}${payCls}" data-uid="${orderUid(o)}">
-      <div class="hrow">
-        <span class="hno">${isTel?`Tel ${noRaw}`:noRaw}</span>
-        <span class="htime">${o.time}</span>
-      </div>
-      <div class="hitems">${items}</div>
-      ${o.note ? `<div class="hordernote">📝 ${o.note}</div>` : ''}
-      <div class="hrow">
-        <span class="hcount">${o.count} ${tr('itemUnit')}</span>
-        <span class="hright">
-          ${historyTab!=='done' ? `<button class="hedit" data-edit="${orderUid(o)}">${tr('editBtn')}</button>` : ''}
-          <span class="htotal">${eu(o.total)}</span>
-        </span>
-      </div>
-      <div class="hacts">
-        <button class="hpay ${o.paid?'on':''}" data-pay="${orderUid(o)}">${o.paid?tr('paid'):tr('markPaid')}</button>
-        <button class="hdone" data-done="${orderUid(o)}"${canDone?'':' disabled title="'+tr('tNeedPaid')+'"'}>${o.done?tr('undoDone'):tr('doneBtn')}</button>
-      </div>
-    </div>`;
-  }).join('') : `<div class="empty"><div class="big">🧾</div><div>${emptyText}</div><div style="font-size:12px">${emptySub}</div></div>`;
+  $('#history').innerHTML = list.length
+    ? list.map(o=>histCardHtml(o, newestUid)).join('')
+    : `<div class="empty"><div class="big">🧾</div><div>${emptyText}</div><div style="font-size:12px">${emptySub}</div></div>`;
 }
 
 // 渲染分类
@@ -2647,7 +2671,7 @@ $('#omList').addEventListener('click', e=>{
   it.given = !it.given;                 // 已给客人 ←→ 取消
   saveOrders();                         // 存入订单并同步云端
   renderOrderModal(o);
-  renderHistory();                      // 卡片上也同步画线
+  refreshCard(omUid);                   // 只重画这一张卡（划线同步），避免整表重排
 });
 
 // 订单卡片按钮：标记付款 / 已完成（退回待处理）/ 修改
@@ -2657,7 +2681,10 @@ $('#history').addEventListener('click', e=>{
     const o = orders.find(x=>orderUid(x)===payBtn.dataset.pay);
     if(o){
       o.paid = !o.paid;
-      saveOrders(); renderHistory();
+      saveOrders();
+      // 归属标签不变（普通单红↔绿）→ 只重画这一张，避免整表重排；
+      // 电话单付款后要移入「待处理」→ 退回整表渲染
+      if(cardInTab(o)) refreshCard(orderUid(o)); else renderHistory();
       playClick();
     }
     return;
@@ -2958,6 +2985,19 @@ const dirty = {};             // 本地改了、待推送的集合
 const timers = {};            // 推送防抖定时器
 const snap = {};              // 上次与云端对齐的数据快照（JSON 字符串）
 let orderDelPending = [];     // 待通知云端的「已删除订单」[{uid, no, at}]（防止合并时把删掉的重又拉回来）
+// 订单「增量上传」：只发本机新增/改动过的单，避免每次点击都把整份订单（可能上千单）传上去
+const ordersBase = new Map(); // uid -> 已与云端对齐的那版订单 JSON
+let ordersFlushing = false;   // 订单是否正在推送（串行化：快速连点时同一时刻只发一个）
+let ordersResend = false;     // 本次推送期间本地又改了 → 完成后补推一次
+
+// 把当前订单记为「已同步」（首次拉取/推送成功后调用）
+function markOrdersSynced(list){ (list || orders).forEach(o => ordersBase.set(orderUid(o), JSON.stringify(o))); }
+// 本机相对上次同步有变化的订单（新增或改动）
+function ordersDelta(){
+  const out = [];
+  for(const o of orders){ const uid = orderUid(o); if(ordersBase.get(uid) !== JSON.stringify(o)) out.push(o); }
+  return out;
+}
 
 function collData(name){
   return name==='menu' ? menu : name==='cats' ? cats : name==='users' ? users : name==='orders' ? orders : null;
@@ -2981,13 +3021,23 @@ async function cloudFlush(name){
   // 不看 cloudOn：上次请求失败（例如手机短暂断网）时也要继续重试，
   // 否则本机的改动会一直发不出去，还会永远挡住云端来的更新
   if(!dirty[name]) return;
-  const patch = {}; patch[name] = collData(name);
-  const sentJSON = JSON.stringify(collData(name));  // 本次推送的快照：用来判断推送期间本地是否又改了
-  // 订单：把「本次要删掉的订单」一起上报，云端会记入墓碑并做合并
-  let sentDel = [];
+  // 订单推送串行化：若已有一个在途，只做标记，等它回来再补推一次（快速连点不会堆积多个请求）
+  if(name === 'orders' && ordersFlushing){ ordersResend = true; return; }
+  const patch = {};
+  let sentDel = [], sentOrders = null, sentJson = null;
   if(name === 'orders'){
+    ordersFlushing = true;
+    ordersResend = false;
+    sentOrders = ordersDelta();                     // 只上传本机新增/改动过的单（增量）
+    patch.orders = sentOrders;
+    // 记下「发送那一刻」每单的版本，作为同步基准。必须在此刻快照 —— 不能用活引用：
+    // 否则发送后在途期间本地又改了同一单，基准会被改成新值，导致漏判「还有更新要补推」而丢掉改动。
+    sentJson = sentOrders.map(o => [orderUid(o), JSON.stringify(o)]);
+    // 把「本次要删掉的订单」一起上报，云端会记入墓碑并做合并
     sentDel = orderDelPending.filter(d => !orders.some(o => orderUid(o) === d.uid));  // 该单还在（没删成）→ 不再上报删除
     if(sentDel.length) patch.orderDel = sentDel;
+  }else{
+    patch[name] = collData(name);
   }
   try{
     const r = await fetch(API_BASE + '/api/state', {
@@ -3001,25 +3051,31 @@ async function cloudFlush(name){
         const sentUids = new Set(sentDel.map(d=>d.uid));
         orderDelPending = orderDelPending.filter(d=>!sentUids.has(d.uid));
       }
-      // 推送期间本地又改了（例如刚点「标记已付款」又快速点「已完成」）：
-      // 这次返回的旧结果若直接采用，会把新改动盖回去、卡片会闪一下。
-      // 此时不用旧结果覆盖，改为继续把最新改动推上去。
-      if(JSON.stringify(collData('orders')) !== sentJSON){
-        cloudPush('orders');
-        return;
-      }
-      // 服务端返回合并后的权威订单（含其它设备同时下的单），直接采用，避免各设备不一致
-      if(Array.isArray(j.orders)){
+      for(const kv of sentJson) ordersBase.set(kv[0], kv[1]);   // 本次发出去的单记为已同步（用发送时的版本）
+      // 推送期间本地又改了（例如刚点「标记已付款」又快速点「已完成」）→ 稍后补推最新，不采用这次旧返回
+      if(ordersDelta().length){
+        ordersResend = true;
+      }else if(Array.isArray(j.orders)){
+        // 服务端返回合并后的权威订单（含其它设备同时下的单），直接采用，避免各设备不一致
         orders = j.orders;
+        markOrdersSynced(orders);
         snap.orders = JSON.stringify(orders);
         try{ localStorage.setItem(ORDER_KEY, snap.orders); }catch(e){}
         renderHistory(); renderOrder(); refreshOrderModal();
       }
+      if(!ordersResend) snap.orders = JSON.stringify(orders);
+    }else{
+      snap[name] = JSON.stringify(collData(name));
     }
-    snap[name] = JSON.stringify(collData(name));
     dirty[name] = false;
     setCloud(true);
   }catch(e){ setCloud(false); }
+  finally{
+    if(name === 'orders'){
+      ordersFlushing = false;
+      if(ordersResend){ ordersResend = false; cloudPush('orders'); }
+    }
+  }
 }
 // 把云端数据应用到本机（只应用没在本地编辑、且确实变化的集合）
 function applyRemote(s){
@@ -3048,6 +3104,8 @@ function applyRemote(s){
       orders = [...orders, editingLocal];
     }
     snap.orders = JSON.stringify(orders); ordersCh = true;
+    // 云端这版已对齐，作为增量上传的基准（含其它设备的单，下次只发改动过的）
+    markOrdersSynced(s.orders);
   }
   // 备料单「已完成」标记（beleg 页写入云端）：变了就重渲染订单卡片，把绿 ✔️ 显示出来
   if(s.prepDone && typeof s.prepDone === 'object' && !Array.isArray(s.prepDone) && JSON.stringify(s.prepDone)!==snap.prepDone){
@@ -3076,6 +3134,8 @@ async function cloudInit(){
       });
       const j = await r.json();
       if(typeof j.rev === 'number') cloudRev = j.rev;
+      // 先建立增量基准：orderUid 会把 uid 写回订单对象，快照必须在这之后再取，两边才一致
+      markOrdersSynced();
       COLLS.forEach(c=>{ snap[c] = JSON.stringify(collData(c)); dirty[c] = false; });
       showToast('☁️', tr('tCloudSynced'), tr('tCloudUploaded'));
     }else{
@@ -3084,9 +3144,12 @@ async function cloudInit(){
     }
   }catch(e){ setCloud(false); }
 }
-// 之后定时拉取，有更新就应用
+// 之后定时拉取，有更新就应用（SSE 实时推送到达时也会立刻调用它）
+let pollBusy = false, pollAgain = false;
 async function cloudPoll(){
   if(document.hidden) return;
+  if(pollBusy){ pollAgain = true; return; }   // 在途时只做标记，等这轮结束再补一轮（不丢掉最新推送）
+  pollBusy = true;
   try{
     let s = await cloudGet();
     setCloud(true);
@@ -3103,6 +3166,20 @@ async function cloudPoll(){
     cloudRev = Number(s.rev) || 0;
     applyRemote(s);
   }catch(e){ setCloud(false); }
+  finally{
+    pollBusy = false;
+    if(pollAgain){ pollAgain = false; cloudPoll(); }   // 期间又收到推送 → 立刻再拉一轮
+  }
+}
+// 实时推送（SSE）：别的设备一改动，后端立刻推来版本号，这里马上拉一次权威状态 → 几乎零延迟。
+// 连不上也没关系：下面的定时轮询会继续兜底。
+function startEvents(){
+  if(!('EventSource' in window)) return;
+  try{
+    const es = new EventSource(API_BASE + '/api/events');
+    es.onmessage = ()=>{ cloudPoll(); };
+    es.onerror = ()=>{ /* 断线后 EventSource 会自动重连；期间靠轮询兜底 */ };
+  }catch(e){ /* 不支持就纯靠轮询 */ }
 }
 
 // ===== 数据备份：导出 / 导入 =====
@@ -3148,8 +3225,9 @@ $('#bakFile').addEventListener('change', e=>{
 saveUsers();
 currentUser = users.find(x=>x.u === localStorage.getItem(SESSION_KEY) && x.status==='active') || null;
 applyLang();   // 应用语言（内含各区域渲染与 applyAuth）
-// 云端同步：首次拉取/迁移，之后每 3 秒拉一次（仅页面可见时）
+// 云端同步：首次拉取/迁移；之后 SSE 实时推送为主、每 3 秒轮询兜底（仅页面可见时）
 cloudInit();
+startEvents();
 setInterval(cloudPoll, 3000);
 window.addEventListener('focus', cloudPoll);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloudPoll(); });

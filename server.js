@@ -92,6 +92,27 @@ const noRedis = res => res.status(503).json({
 
 app.get('/api/health', (req, res) => res.json({ ok: true, redis: !!redis }));
 
+// 实时推送（SSE）：任何一次写入后把新版本号推给所有在线页面，
+// 让别的设备立刻看到变化，而不用等下一次轮询（把 3 秒延迟降到几乎实时）。
+const sseClients = new Set();
+app.get('/api/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.write('retry: 3000\n\n');
+  res.write(`data: ${JSON.stringify({ rev: 0 })}\n\n`);   // 先发一帧，让前端立刻握手
+  sseClients.add(res);
+  const hb = setInterval(() => { try { res.write(': hb\n\n'); } catch (e) { /* 连接已断，close 事件会清理 */ } }, 20000);
+  req.on('close', () => { clearInterval(hb); sseClients.delete(res); });
+});
+function broadcast(rev) {
+  const msg = `data: ${JSON.stringify({ rev })}\n\n`;
+  for (const c of sseClients) { try { c.write(msg); } catch (e) { sseClients.delete(c); } }
+}
+
 // 读取全部共享数据（rev 为版本号，用于多设备判断是否有更新）
 app.get('/api/state', async (req, res) => {
   if (!redis) return noRedis(res);
@@ -141,6 +162,7 @@ app.put('/api/state', async (req, res) => {
     if (jobs.length) await Promise.all(jobs);
 
     out.rev = await redis.incr(K.rev);
+    broadcast(out.rev);          // 立刻通知所有在线页面有更新
     res.json(out);
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
