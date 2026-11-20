@@ -2948,6 +2948,7 @@ async function cloudFlush(name){
   // 否则本机的改动会一直发不出去，还会永远挡住云端来的更新
   if(!dirty[name]) return;
   const patch = {}; patch[name] = collData(name);
+  const sentJSON = JSON.stringify(collData(name));  // 本次推送的快照：用来判断推送期间本地是否又改了
   // 订单：把「本次要删掉的订单」一起上报，云端会记入墓碑并做合并
   let sentDel = [];
   if(name === 'orders'){
@@ -2965,6 +2966,13 @@ async function cloudFlush(name){
       if(sentDel.length){
         const sentUids = new Set(sentDel.map(d=>d.uid));
         orderDelPending = orderDelPending.filter(d=>!sentUids.has(d.uid));
+      }
+      // 推送期间本地又改了（例如刚点「标记已付款」又快速点「已完成」）：
+      // 这次返回的旧结果若直接采用，会把新改动盖回去、卡片会闪一下。
+      // 此时不用旧结果覆盖，改为继续把最新改动推上去。
+      if(JSON.stringify(collData('orders')) !== sentJSON){
+        cloudPush('orders');
+        return;
       }
       // 服务端返回合并后的权威订单（含其它设备同时下的单），直接采用，避免各设备不一致
       if(Array.isArray(j.orders)){
