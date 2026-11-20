@@ -24,6 +24,8 @@ const K = {
   users:    'snack:users',
   orders:   'snack:orders',
   orderDel: 'snack:orderdel',  // 已删除订单的「墓碑」：{ 订单唯一标识: 删除时该单的提交时间 }
+  prepDone:    'snack:prep_done',     // 备料单「已完成」标记：{ 订单uid: 标记时间 }（多设备共享）
+  pendingDone: 'snack:pending_done',  // 待处理看板「已完成」标记：{ 订单uid: 标记时间 }（多设备共享）
   rev:      'snack:rev'
 };
 
@@ -64,6 +66,24 @@ function mergeOrders(cur, incoming, tomb) {
   return [...map.values()];
 }
 
+// 「已完成」标记（备料单 / 待处理看板）：各设备各点各的单，所以按 uid 取并集而不是整段覆盖，
+// 避免后点的设备把先点的那批标记冲掉。标记超过 2 天自动清掉，避免无限增长（订单都是当天用完）。
+const DONE_MAX_AGE = 2 * 24 * 3600 * 1000;
+function mergeMarks(cur, incoming) {
+  const now = Date.now();
+  const out = {};
+  const put = v => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return;
+    for (const k of Object.keys(v)) {
+      const at = Number(v[k]) || 0;
+      if (!at || now - at > DONE_MAX_AGE) continue;
+      if (!out[k] || out[k] < at) out[k] = at;
+    }
+  };
+  put(cur); put(incoming);
+  return out;
+}
+
 const noRedis = res => res.status(503).json({
   error: 'Upstash 未配置：请设置 UPSTASH_REDIS_REST_URL 和 UPSTASH_REDIS_REST_TOKEN'
 });
@@ -74,10 +94,11 @@ app.get('/api/health', (req, res) => res.json({ ok: true, redis: !!redis }));
 app.get('/api/state', async (req, res) => {
   if (!redis) return noRedis(res);
   try {
-    const [menu, cats, users, orders, rev] = await Promise.all([
-      redis.get(K.menu), redis.get(K.cats), redis.get(K.users), redis.get(K.orders), redis.get(K.rev)
+    const [menu, cats, users, orders, prepDone, pendingDone, rev] = await Promise.all([
+      redis.get(K.menu), redis.get(K.cats), redis.get(K.users), redis.get(K.orders),
+      redis.get(K.prepDone), redis.get(K.pendingDone), redis.get(K.rev)
     ]);
-    res.json({ menu, cats, users, orders, rev: Number(rev) || 0 });
+    res.json({ menu, cats, users, orders, prepDone, pendingDone, rev: Number(rev) || 0 });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
   }
@@ -89,6 +110,7 @@ app.put('/api/state', async (req, res) => {
   if (!redis) return noRedis(res);
   try {
     const body = req.body || {};
+    const out = { ok: true };
 
     // ---- 订单：合并 + 删除墓碑 ----
     if (body.orders !== undefined || body.orderDel !== undefined) {
@@ -97,17 +119,27 @@ app.put('/api/state', async (req, res) => {
       putTombstone(tomb, body.orderDel);
       const merged = mergeOrders(cur, body.orders, tomb);
       await Promise.all([redis.set(K.orders, merged), redis.set(K.orderDel, tomb)]);
-      const rev = await redis.incr(K.rev);
       // 把合并后的权威结果回给客户端，保证各设备立刻收敛
-      return res.json({ ok: true, rev, orders: merged });
+      out.orders = merged;
+    }
+
+    // ---- 「已完成」标记：按 uid 取并集，把合并后的权威结果回给客户端，保证多人立刻收敛 ----
+    if (body.prepDone !== undefined || body.pendingDone !== undefined) {
+      const [curPrep, curPend] = await Promise.all([redis.get(K.prepDone), redis.get(K.pendingDone)]);
+      const prep = body.prepDone !== undefined ? mergeMarks(curPrep, body.prepDone) : curPrep;
+      const pend = body.pendingDone !== undefined ? mergeMarks(curPend, body.pendingDone) : curPend;
+      await Promise.all([redis.set(K.prepDone, prep || {}), redis.set(K.pendingDone, pend || {})]);
+      out.prepDone = prep || {};
+      out.pendingDone = pend || {};
     }
 
     // ---- 其余集合：整段覆盖即可 ----
     const jobs = [];
     for (const c of ['menu', 'cats', 'users']) if (body[c] !== undefined) jobs.push(redis.set(K[c], body[c]));
     if (jobs.length) await Promise.all(jobs);
-    const rev = await redis.incr(K.rev);
-    res.json({ ok: true, rev });
+
+    out.rev = await redis.incr(K.rev);
+    res.json(out);
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
   }

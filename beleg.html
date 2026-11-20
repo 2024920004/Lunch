@@ -129,10 +129,11 @@ let showAll = false;      // 只看待处理 / 看全部
 let lastErr = false;      // 连本机数据都没有 → 彻底读不到
 let offline = false;      // 后端连不上，但本机有缓存数据
 const L_MENU = 'snack_menu_v1', L_ORDERS = 'snack_orders_v1';   // 与主应用同一份本机缓存
-// 备料单自己的「已完成」：只影响本机备料单的显示，不写回订单、不影响主应用
+// 备料单的「已完成」：不写回订单本身，但存到云端，同一个页面多人/多设备共享（localStorage 只作离线缓存）
 const L_PREP_DONE = 'beleg_prep_done_v1';
 let prepDone = {};
 try{ prepDone = JSON.parse(localStorage.getItem(L_PREP_DONE) || '{}') || {}; }catch(e){ prepDone = {}; }
+let marksDirty = false;   // 本机有还没推上云的「已完成」改动
 function savePrepDone(){ try{ localStorage.setItem(L_PREP_DONE, JSON.stringify(prepDone)); }catch(e){} }
 // 超过 2 天的记录自动清掉，避免无限增长（订单都是当天用完）
 function prunePrepDone(){
@@ -165,6 +166,15 @@ async function load(){
     if(s && s.error) throw new Error(s.error);
     menu = Array.isArray(s.menu) ? s.menu : [];
     orders = Array.isArray(s.orders) ? s.orders : [];
+    // 「已完成」：采用云端（所有人共享）的结果；本机若有没推上去的改动，先并集再补推，避免被覆盖
+    const remoteDone = (s.prepDone && typeof s.prepDone === 'object' && !Array.isArray(s.prepDone)) ? s.prepDone : {};
+    if(marksDirty){
+      prepDone = Object.assign({}, remoteDone, prepDone);
+      pushMarks();
+    }else{
+      prepDone = remoteDone;
+      savePrepDone();
+    }
     prunePrepDone();
     lastErr = false; offline = false;
     setConn('ok');
@@ -302,13 +312,34 @@ function render(){
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // ===================== 交互 =====================
-// 备料单本机标记「已完成」：只在备料单上把这张卡移到「已看掉」，不写回订单、不影响主应用
+// 备料单标记「已完成」：把这张卡移走，并同步到云端 —— 同一个页面的所有人都不再看到它
 function markPrepDone(uid){
   const o = orders.find(x => orderUid(x) === uid);
   if(!o || o.done || isPrepDone(o)) return;
   prepDone[uid] = Date.now();
   savePrepDone();
   render();
+  pushMarks();
+}
+
+// 把「已完成」标记推到云端（多人共享）；失败就先留在本机，下次轮询会补推
+async function pushMarks(){
+  marksDirty = true;
+  try{
+    const r = await fetch(API_BASE + '/api/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prepDone })
+    });
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j && j.prepDone && typeof j.prepDone === 'object'){
+      prepDone = j.prepDone;            // 采用服务端合并后的权威结果，保证各设备一致
+      savePrepDone();
+      marksDirty = false;
+      render();
+    }
+  }catch(e){ /* 离线时只留本机改动，下次轮询/联网再同步 */ }
 }
 
 $('#grid').addEventListener('click', e=>{
